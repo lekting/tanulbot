@@ -1,21 +1,22 @@
-# TanulBot - Hungarian Learning Telegram Bot
+# TanulBot - Multilingual Learning Telegram Bot
 
-A Telegram bot for learning Hungarian with AI assistance, dictation practice, and Anki deck generation.
+A Telegram bot for language learning with AI assistance, dictation practice, and Anki deck generation. Currently supports multiple languages.
 
 > **Vibe Coding Project**: This project was created with the assistance of AI tools, demonstrating how AI can be leveraged to build practical language learning applications.
 
 ## Features
 
-- 🗣 **Hungarian Practice**: Chat in Hungarian with the bot and receive corrections
-- ✍️ **Dictation Practice**: Listen to Hungarian words and type them for points
-- 📄 **PDF Processing**: Upload Hungarian text to extract vocabulary with OCR support
-- 🎯 **Anki Integration**: Auto-generate Anki decks with Hungarian-Russian word pairs
+- 🗣 **Language Practice**: Chat in your target language with the bot and receive corrections
+- ✍️ **Dictation Practice**: Listen to words and type them for points
+- 📄 **PDF Processing**: Upload text in your target language to extract vocabulary with OCR support
+- 🎯 **Anki Integration**: Auto-generate Anki decks with word pairs in your languages
 - 🏆 **Progress Tracking**: Track learning progress with levels and points
-- 🔄 **Speech Recognition**: Convert spoken Hungarian to text for pronunciation practice
-- 🔍 **Grammar Explanations**: Get detailed explanations of Hungarian grammar rules
+- 🔄 **Speech Recognition**: Convert spoken language to text for pronunciation practice
+- 🔍 **Grammar Explanations**: Get detailed explanations of grammar rules
 - 📊 **Vocabulary Analytics**: View statistics on most common words and learning progress
 - 📱 **Multi-platform**: Access via Telegram on mobile or desktop devices
 - 🌐 **Offline Mode**: Download generated resources for offline study
+- 🌍 **Multiple Languages**: Support for various languages, not limited to Hungarian
 
 ## Technologies
 
@@ -81,19 +82,20 @@ create-anki-deck.py # Python script for Anki deck generation
 
 For PDF processing and text extraction, this project uses Tesseract OCR which requires language data:
 
-1. Download language data files from [tesseract-ocr/tessdata](https://github.com/tesseract-ocr/tessdata) based on your needs:
+1. Download language data files from [tesseract-ocr/tessdata](https://github.com/tesseract-ocr/tessdata) based on the languages you want to support:
 
-   - Hungarian (required): `hun.traineddata`
-   - Russian (for translations): `rus.traineddata`
-   - Any other languages you wish to support (see [full language list](https://github.com/tesseract-ocr/tessdata))
+   - Download traineddata files for your target languages (see [full language list](https://github.com/tesseract-ocr/tessdata))
+   - Example for Hungarian and German:
 
    ```
    # On Windows
    curl -L -o tessdata/hun.traineddata https://github.com/tesseract-ocr/tessdata/raw/main/hun.traineddata
+   curl -L -o tessdata/deu.traineddata https://github.com/tesseract-ocr/tessdata/raw/main/deu.traineddata
    curl -L -o tessdata/rus.traineddata https://github.com/tesseract-ocr/tessdata/raw/main/rus.traineddata
 
    # On Linux/macOS
    wget -P tessdata/ https://github.com/tesseract-ocr/tessdata/raw/main/hun.traineddata
+   wget -P tessdata/ https://github.com/tesseract-ocr/tessdata/raw/main/deu.traineddata
    wget -P tessdata/ https://github.com/tesseract-ocr/tessdata/raw/main/rus.traineddata
    ```
 
@@ -109,6 +111,11 @@ Common language codes:
 - `deu` - German
 - `fra` - French
 - `ita` - Italian
+- `spa` - Spanish
+- `por` - Portuguese
+- `jpn` - Japanese
+- `kor` - Korean
+- `chi_sim` - Chinese Simplified
 
 The bot will automatically detect which language files are available and offer those languages for processing.
 
@@ -124,26 +131,27 @@ The project includes a Python script for generating Anki decks from word pairs:
 3. Usage:
 
    ```
-   python create-anki-deck.py word_pairs.json output.apkg [--deck-name "Hungarian Words"]
+   python create-anki-deck.py word_pairs.json output.apkg [--deck-name "Language Learning Deck"]
    ```
 
    Parameters:
 
-   - `word_pairs.json`: JSON file containing word pairs in format `[{"front": "magyar szó", "back": "translation"}]`
+   - `word_pairs.json`: JSON file containing word pairs in format `[{"front": "foreign word", "back": "translation"}]`
    - `output.apkg`: Output Anki package file
-   - `--deck-name`: Optional name for the deck (default: "Hungarian Words")
+   - `--deck-name`: Optional name for the deck (default: "Language Learning Deck")
    - `--css-file`: Optional CSS file for custom card styling
    - `--quiet`: Suppress output messages
 
 ## Usage
 
 1. Start a chat with the bot on Telegram
-2. Use the keyboard menu to select an activity
-3. Upload Hungarian PDFs to extract words
-4. Practice with dictation or conversation
-5. Download generated Anki decks for offline study
-6. Use speech recognition for pronunciation practice
-7. Request grammar explanations on specific topics
+2. Select your target language and native language
+3. Use the keyboard menu to select an activity
+4. Upload PDFs in your target language to extract words
+5. Practice with dictation or conversation
+6. Download generated Anki decks for offline study
+7. Use speech recognition for pronunciation practice
+8. Request grammar explanations on specific topics
 
 ## License
 
