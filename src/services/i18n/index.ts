@@ -273,6 +273,9 @@ const translations: Record<SupportedLanguage, Record<string, string>> = {
       '📚 File is too large for processing via Telegram Bot API (20MB limit).\n\nPlease split the file into parts smaller than 20MB or use a local installation.',
     'document.callback_error':
       'An error occurred while processing the request.',
+    'document.checking_file': '🔎 Checking file...',
+    'document.already_processed':
+      '✅ This file was already processed on {date}.\n\n🔤 Words extracted: {words}\n\nGenerating Anki deck from cached data...',
 
     // Worksheet related messages
     'worksheet.select_type': 'Select worksheet type for {language}:',
@@ -459,8 +462,11 @@ const translations: Record<SupportedLanguage, Record<string, string>> = {
     'document.error_processing':
       '❌ Произошла ошибка при обработке файла. Пожалуйста, попробуйте еще раз.',
     'document.large_file_error':
-      '📚 Файл слишком большой для обработки через Telegram Bot API (ограничение 20MB).\n\nПожалуйста, разделите файл на части меньше 20MB или используйте локальную установку.',
+      '📚 Файл слишком большой для обработки через Telegram Bot API (лимит 20МБ).\n\nПожалуйста, разделите файл на части меньше 20МБ или используйте локальную установку.',
     'document.callback_error': 'Произошла ошибка при обработке запроса.',
+    'document.checking_file': '🔎 Проверка файла...',
+    'document.already_processed':
+      '✅ Этот файл уже был обработан {date}.\n\n🔤 Извлечено слов: {words}\n\nСоздаем колоду Anki из кэшированных данных...',
 
     // Worksheet related messages
     'worksheet.select_type': 'Выберите тип прописей для {language}:',

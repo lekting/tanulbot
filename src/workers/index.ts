@@ -4,11 +4,13 @@
 import { TMP_DIR } from '../config';
 import fs from 'fs/promises';
 import path from 'path';
+import { cleanupOldHashRecords } from '../utils/fileHash';
 
 // Re-export the active user worker
 export { startActiveUserWorker } from './activeUserWorker';
 
 const MAX_FILE_AGE_MS = 24 * 60 * 60 * 1000; // 24 hours
+const MAX_HASH_RECORD_AGE_DAYS = 30; // 30 days
 
 /**
  * Start a worker to clean up old temporary files
@@ -24,6 +26,79 @@ export function startFileCleanupWorker(): NodeJS.Timeout {
       console.error('Error in file cleanup worker:', error);
     }
   }, 4 * 60 * 60 * 1000); // Run every 4 hours
+}
+
+/**
+ * Start a worker to clean up old hash records
+ * @returns Interval ID
+ */
+export function startHashRecordCleanupWorker(): NodeJS.Timeout {
+  console.log('Starting hash record cleanup worker...');
+
+  return setInterval(async () => {
+    try {
+      await cleanupAllUsersHashRecords();
+    } catch (error) {
+      console.error('Error in hash record cleanup worker:', error);
+    }
+  }, 24 * 60 * 60 * 1000); // Run every 24 hours
+}
+
+/**
+ * Clean up old hash records for all users
+ */
+async function cleanupAllUsersHashRecords(): Promise<void> {
+  try {
+    console.log('Starting cleanup of old hash records...');
+
+    // Check if TMP_DIR exists
+    try {
+      await fs.access(TMP_DIR);
+    } catch (error) {
+      console.log('Temporary directory does not exist, nothing to clean up');
+      return;
+    }
+
+    // Get all user directories
+    const entries = await fs.readdir(TMP_DIR, { withFileTypes: true });
+    let totalCleanedRecords = 0;
+
+    // Process each user directory
+    for (const entry of entries) {
+      if (entry.isDirectory() && entry.name.startsWith('user_')) {
+        // Extract user ID from directory name
+        const userId = parseInt(entry.name.replace('user_', ''), 10);
+
+        if (!isNaN(userId)) {
+          try {
+            // Clean up old hash records for this user
+            const deletedCount = await cleanupOldHashRecords(
+              userId,
+              MAX_HASH_RECORD_AGE_DAYS
+            );
+
+            if (deletedCount > 0) {
+              console.log(
+                `Deleted ${deletedCount} old hash records for user ${userId}`
+              );
+              totalCleanedRecords += deletedCount;
+            }
+          } catch (userError) {
+            console.error(
+              `Error cleaning hash records for user ${userId}:`,
+              userError
+            );
+          }
+        }
+      }
+    }
+
+    console.log(
+      `Hash record cleanup completed. Total records deleted: ${totalCleanedRecords}`
+    );
+  } catch (error) {
+    console.error('Error cleaning up old hash records:', error);
+  }
 }
 
 /**
@@ -59,7 +134,7 @@ async function cleanupOldFiles(): Promise<void> {
 
           // Process each file
           for (const file of files) {
-            // Exclude directories like 'audio'
+            // Exclude directories like 'audio' and 'hash_records'
             if (!file.isDirectory()) {
               const filePath = path.join(userDir, file.name);
 

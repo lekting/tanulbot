@@ -15,7 +15,7 @@ import {
   tokenizeAndEstimateCost,
   splitTextIntoChunks
 } from '../services/token-calculator';
-import { t } from '../services/i18n';
+import { t, SupportedLanguage } from '../services/i18n';
 import {
   CALLBACK_ACCEPT,
   CALLBACK_CANCEL,
@@ -30,6 +30,15 @@ import {
   formatFileSize,
   progressBar
 } from '../utils/handlerUtils';
+import { DatabaseService } from '../services';
+import {
+  generateFileHash,
+  getHashedFilename,
+  saveHashRecord,
+  getHashRecord,
+  saveExtractedTextForHash,
+  getExtractedTextForHash
+} from '../utils/fileHash';
 
 interface WordPair {
   front: string;
@@ -41,9 +50,11 @@ interface PendingTask {
   text: string;
   messageId: number;
   pageCount: number;
+  fileHash?: string;
 }
 
 const pendingTasks = new Map<number, PendingTask>();
+const databaseService = new DatabaseService();
 
 export async function handleDocumentUpload(ctx: Context): Promise<void> {
   const userId = ctx.from?.id;
@@ -84,6 +95,46 @@ export async function handleDocumentUpload(ctx: Context): Promise<void> {
 
     const processingMsg = await ctx.reply(t('document.downloading', userLang));
     await downloadFile(fileLink, filePath);
+
+    await ctx.api.editMessageText(
+      ctx.chat?.id || ctx.from?.id || 0,
+      processingMsg.message_id,
+      t('document.checking_file', userLang)
+    );
+
+    const fileHash = await generateFileHash(filePath);
+
+    // Check if we've processed this file before
+    const hashRecord = await getHashRecord(userId, fileHash);
+    if (hashRecord) {
+      const cachedText = await getExtractedTextForHash(userId, fileHash);
+
+      if (cachedText) {
+        await ctx.api.editMessageText(
+          ctx.chat?.id || ctx.from?.id || 0,
+          processingMsg.message_id,
+          t('document.already_processed', userLang, {
+            date: new Date(hashRecord.processedAt).toLocaleString(),
+            words: hashRecord.wordPairCount
+          })
+        );
+
+        // Process the cached text
+        await processExtractedText(
+          ctx,
+          userLang,
+          userId,
+          fileHash,
+          cachedText,
+          hashRecord.pageCount,
+          processingMsg.message_id
+        );
+
+        // We're done, clean up the downloaded file
+        await fs.unlink(filePath);
+        return;
+      }
+    }
 
     await ctx.api.editMessageText(
       ctx.chat?.id || ctx.from?.id || 0,
@@ -179,6 +230,11 @@ export async function handleDocumentUpload(ctx: Context): Promise<void> {
       return;
     }
 
+    // Save the extracted text with file hash
+    if (fileHash) {
+      await saveExtractedTextForHash(userId, fileHash, text);
+    }
+
     const extractionMethod = ocrUsed
       ? t('document.extraction_ocr', userLang)
       : t('document.extraction_direct', userLang);
@@ -215,7 +271,8 @@ export async function handleDocumentUpload(ctx: Context): Promise<void> {
         filePath,
         text,
         messageId: tokenMessage.message_id,
-        pageCount
+        pageCount,
+        fileHash
       });
     }
   } catch (error) {
@@ -229,6 +286,123 @@ export async function handleDocumentUpload(ctx: Context): Promise<void> {
     }
 
     await ctx.reply(t('document.error_processing', userLang));
+  }
+}
+
+/**
+ * Process extracted text to generate word pairs and Anki deck
+ */
+async function processExtractedText(
+  ctx: Context,
+  userLang: SupportedLanguage,
+  userId: number,
+  fileHash: string,
+  extractedText: string,
+  pageCount: number,
+  messageId: number
+): Promise<void> {
+  try {
+    const learningLanguage = await store.getUserLearningLanguage(userId);
+    const startTime = Date.now();
+
+    await ctx.api.editMessageText(
+      ctx.chat?.id || userId,
+      messageId,
+      t('document.splitting_text', userLang),
+      { reply_markup: undefined }
+    );
+
+    const chunks = await splitTextIntoChunks(
+      `openrouter/${MODELS.CHAT}`,
+      extractedText
+    );
+
+    let allWordPairs: WordPair[] = [];
+    let processedChunks = 0;
+
+    for (const chunk of chunks) {
+      processedChunks++;
+
+      await ctx.api.editMessageText(
+        ctx.chat?.id || userId,
+        messageId,
+        t('document.processing_chunk', userLang, {
+          current: processedChunks,
+          total: chunks.length,
+          count: chunk.tokenCount
+        }),
+        { reply_markup: undefined }
+      );
+
+      const chunkWordPairs = await extractWordPairs(
+        chunk.text,
+        learningLanguage,
+        userLang,
+        userId,
+        databaseService
+      );
+      allWordPairs = [...allWordPairs, ...chunkWordPairs];
+    }
+
+    allWordPairs = Array.from(
+      new Map(allWordPairs.map((pair) => [JSON.stringify(pair), pair])).values()
+    );
+
+    await ctx.api.editMessageText(
+      ctx.chat?.id || userId,
+      messageId,
+      t('document.creating_deck', userLang, { count: allWordPairs.length }),
+      { reply_markup: undefined }
+    );
+
+    // Save the word count in the hash record
+    if (fileHash) {
+      await saveHashRecord(
+        userId,
+        fileHash,
+        allWordPairs.length,
+        pageCount,
+        true // Assuming OCR was used
+      );
+    }
+
+    // Store word pairs for future use
+    store.setLastWordPairs(allWordPairs);
+
+    const userDir = await ensureUserDir(userId);
+    const deckName = `Hungarian Vocabulary - ${new Date().toLocaleDateString()}`;
+    const buffer = await createAnkiDeck(deckName, allWordPairs, userId);
+    const deckPath = path.join(userDir, `hungarian_${Date.now()}.apkg`);
+    await fs.writeFile(deckPath, buffer);
+
+    const totalTime = ((Date.now() - startTime) / 1000).toFixed(1);
+
+    await ctx.api.editMessageText(
+      ctx.chat?.id || userId,
+      messageId,
+      t('document.processing_complete', userLang, {
+        time: totalTime,
+        pages: pageCount,
+        words: allWordPairs.length
+      }),
+      { reply_markup: undefined }
+    );
+
+    await ctx.replyWithDocument(new InputFile(deckPath), {
+      caption: t('document.deck_ready', userLang, {
+        count: allWordPairs.length
+      })
+    });
+
+    await fs.unlink(deckPath);
+  } catch (error) {
+    console.error('Error processing extracted text:', error);
+    await ctx.api.editMessageText(
+      ctx.chat?.id || userId,
+      messageId,
+      t('document.error_processing', userLang),
+      { reply_markup: undefined }
+    );
   }
 }
 
@@ -249,81 +423,19 @@ export async function handleDocumentCallback(ctx: Context): Promise<void> {
     if (data === CALLBACK_ACCEPT) {
       await ctx.answerCallbackQuery(t('document.processing_start', userLang));
 
-      await ctx.api.editMessageText(
-        ctx.chat?.id || userId,
-        task.messageId,
-        t('document.splitting_text', userLang),
-        { reply_markup: undefined }
+      // Process the text
+      await processExtractedText(
+        ctx,
+        userLang,
+        userId,
+        task.fileHash || '',
+        task.text,
+        task.pageCount,
+        task.messageId
       );
 
-      const startTime = Date.now();
-      const chunks = await splitTextIntoChunks(
-        `openrouter/${MODELS.CHAT}`,
-        task.text
-      );
-
-      let allWordPairs: WordPair[] = [];
-      let processedChunks = 0;
-
-      for (const chunk of chunks) {
-        processedChunks++;
-
-        await ctx.api.editMessageText(
-          ctx.chat?.id || userId,
-          task.messageId,
-          t('document.processing_chunk', userLang, {
-            current: processedChunks,
-            total: chunks.length,
-            count: chunk.tokenCount
-          }),
-          { reply_markup: undefined }
-        );
-
-        const chunkWordPairs = await extractWordPairs(chunk.text);
-        allWordPairs = [...allWordPairs, ...chunkWordPairs];
-      }
-
-      allWordPairs = Array.from(
-        new Map(
-          allWordPairs.map((pair) => [JSON.stringify(pair), pair])
-        ).values()
-      );
-
-      await ctx.api.editMessageText(
-        ctx.chat?.id || userId,
-        task.messageId,
-        t('document.creating_deck', userLang, { count: allWordPairs.length }),
-        { reply_markup: undefined }
-      );
-
-      store.setLastWordPairs(allWordPairs);
-      const userDir = await ensureUserDir(userId);
-      const deckName = `Hungarian Vocabulary - ${new Date().toLocaleDateString()}`;
-      const buffer = await createAnkiDeck(deckName, allWordPairs, userId);
-      const deckPath = path.join(userDir, `hungarian_${Date.now()}.apkg`);
-      await fs.writeFile(deckPath, buffer);
-
-      const totalTime = ((Date.now() - startTime) / 1000).toFixed(1);
-
-      await ctx.api.editMessageText(
-        ctx.chat?.id || userId,
-        task.messageId,
-        t('document.processing_complete', userLang, {
-          time: totalTime,
-          pages: task.pageCount,
-          words: allWordPairs.length
-        }),
-        { reply_markup: undefined }
-      );
-
-      await ctx.replyWithDocument(new InputFile(deckPath), {
-        caption: t('document.deck_ready', userLang, {
-          count: allWordPairs.length
-        })
-      });
-
+      // Clean up the original file
       await fs.unlink(task.filePath);
-      await fs.unlink(deckPath);
       pendingTasks.delete(userId);
     } else if (data === CALLBACK_CANCEL) {
       await ctx.answerCallbackQuery(

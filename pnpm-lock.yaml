@@ -32,6 +32,9 @@ importers:
       grammy:
         specifier: ^1.36.1
         version: 1.36.1
+      jsonrepair:
+        specifier: ^3.12.0
+        version: 3.12.0
       mysql2:
         specifier: ^3.14.1
         version: 3.14.1
@@ -520,6 +523,10 @@ packages:
 
   jpeg-exif@1.1.4:
     resolution: {integrity: sha512-a+bKEcCjtuW5WTdgeXFzswSrdqi0jk4XlEtZlx5A94wCoBpFjfFTbo/Tra5SpNCl/YFZPvcV1dJc+TAYeg6ROQ==}
+
+  jsonrepair@3.12.0:
+    resolution: {integrity: sha512-SWfjz8SuQ0wZjwsxtSJ3Zy8vvLg6aO/kxcp9TWNPGwJKgTZVfhNEQBMk/vPOpYCDFWRxD6QWuI6IHR1t615f0w==}
+    hasBin: true
 
   linebreak@1.1.0:
     resolution: {integrity: sha512-MHp03UImeVhB7XZtjd0E4n6+3xr5Dq/9xI/5FptGk5FrbDR3zagPa2DS6U8ks/3HjbKWG9Q1M2ufOzxV2qLYSQ==}
@@ -1316,6 +1323,8 @@ snapshots:
       '@pkgjs/parseargs': 0.11.0
 
   jpeg-exif@1.1.4: {}
+
+  jsonrepair@3.12.0: {}
 
   linebreak@1.1.0:
     dependencies:

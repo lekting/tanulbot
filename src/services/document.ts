@@ -126,7 +126,7 @@ export async function extractTextFromPdf(
       console.log('Using languages:', languageString);
 
       const ocrProcess = exec(
-        `py -m ocrmypdf "${filePath}" "${ocrFilePath}" -l ${languageString} --pdf-renderer sandwich --output-type pdf --optimize 0 --rotate-pages --force-ocr --pages 1-20 --sidecar "${sidecarPath}" -v 2`,
+        `py -m ocrmypdf "${filePath}" "${ocrFilePath}" -l ${languageString} --pdf-renderer sandwich --output-type pdf --optimize 0 --rotate-pages --force-ocr --pages 1-50 --sidecar "${sidecarPath}" -v 2`,
         {
           maxBuffer: 1024 * 1024 * 50,
           env: {

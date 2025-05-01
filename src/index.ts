@@ -10,7 +10,11 @@ import {
   handleTextMessage,
   handleWorksheetCallback
 } from './handlers';
-import { startActiveUserWorker, startFileCleanupWorker } from './workers/index';
+import {
+  startActiveUserWorker,
+  startFileCleanupWorker,
+  startHashRecordCleanupWorker
+} from './workers/index';
 import { registerSubscriptionHandlers } from './services/subscription';
 import { initDatabase } from './config/database';
 
@@ -53,6 +57,7 @@ async function startApp() {
     // Start workers
     const activeUserWorker = startActiveUserWorker(bot);
     const fileCleanupWorker = startFileCleanupWorker();
+    const hashRecordCleanupWorker = startHashRecordCleanupWorker();
 
     // Start the bot
     console.log('🤖 TanulBot started!');
@@ -65,6 +70,7 @@ async function startApp() {
       console.log('Shutting down...');
       clearInterval(activeUserWorker);
       clearInterval(fileCleanupWorker);
+      clearInterval(hashRecordCleanupWorker);
       bot.stop();
     });
 
@@ -72,6 +78,7 @@ async function startApp() {
       console.log('Shutting down...');
       clearInterval(activeUserWorker);
       clearInterval(fileCleanupWorker);
+      clearInterval(hashRecordCleanupWorker);
       bot.stop();
     });
     await bot.start();
