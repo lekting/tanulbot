@@ -13,6 +13,7 @@ A Telegram bot for language learning with AI assistance, dictation practice, and
 - 🏆 **Progress Tracking**: Track learning progress with levels and points
 - 🔄 **Speech Recognition**: Convert spoken language to text for pronunciation practice
 - 🔍 **Grammar Explanations**: Get detailed explanations of grammar rules
+- 📝 **Worksheets**: Generate practice worksheets for handwriting and character recognition
 - 📊 **Vocabulary Analytics**: View statistics on most common words and learning progress
 - 📱 **Multi-platform**: Access via Telegram on mobile or desktop devices
 - 🌐 **Offline Mode**: Download generated resources for offline study

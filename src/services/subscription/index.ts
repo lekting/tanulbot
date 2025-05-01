@@ -2,6 +2,7 @@ import { Bot, Context, InputFile } from 'grammy';
 import { store } from '../../store';
 import { SubscriptionPlan } from '../../types';
 import { t, getSubscriptionPlans } from '../i18n';
+import { getUserLang } from '../../utils/handlerUtils';
 
 /**
  * Create an invoice for subscription purchase
@@ -15,7 +16,7 @@ export async function createSubscriptionInvoice(
   if (!ctx.from) return;
 
   const userId = ctx.from.id;
-  const userLang = store.getUserLanguage(userId);
+  const userLang = getUserLang(userId);
   const plans = getSubscriptionPlans(userLang);
   const planConfig = plans[plan];
 
@@ -78,7 +79,7 @@ export async function processSuccessfulPayment(ctx: Context): Promise<void> {
   }
 
   const userId = ctx.from.id;
-  const userLang = store.getUserLanguage(userId);
+  const userLang = getUserLang(userId);
   const payment = ctx.message.successful_payment;
 
   try {
@@ -129,7 +130,7 @@ export async function cancelSubscription(ctx: Context): Promise<void> {
   if (!ctx.from) return;
 
   const userId = ctx.from.id;
-  const userLang = store.getUserLanguage(userId);
+  const userLang = getUserLang(userId);
   const subscription = store.getUserSubscription(userId);
 
   // Check if subscription is active and has payment ID
@@ -161,7 +162,7 @@ export async function getSubscriptionStatus(ctx: Context): Promise<void> {
   if (!ctx.from) return;
 
   const userId = ctx.from.id;
-  const userLang = store.getUserLanguage(userId);
+  const userLang = getUserLang(userId);
   const subscription = store.getUserSubscription(userId);
 
   let statusMessage = t('subscription.status_display', userLang, {

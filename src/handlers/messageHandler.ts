@@ -30,6 +30,24 @@ import {
   getSubscriptionStatus
 } from '../services/subscription';
 import { handleWorksheetMenu } from './worksheetHandler';
+import { getUserLang } from '../utils/handlerUtils';
+import {
+  LANG_ENGLISH,
+  LANG_RUSSIAN,
+  FLAG_HUNGARIAN,
+  FLAG_SPANISH,
+  FLAG_FRENCH,
+  FLAG_GERMAN,
+  FLAG_ITALIAN,
+  LEARNING_HUNGARIAN,
+  LEARNING_SPANISH,
+  LEARNING_FRENCH,
+  LEARNING_GERMAN,
+  LEARNING_ITALIAN,
+  DIARY_SUMMARY_LIMIT,
+  SUBSCRIPTION_BASIC,
+  SUBSCRIPTION_PREMIUM
+} from '../constants/messageHandler';
 
 /**
  * Handle text messages from users
@@ -43,12 +61,12 @@ export async function handleTextMessage(ctx: Context): Promise<void> {
   if (!userId || !messageText) return;
 
   // Get user's language preference
-  const userLang = store.getUserLanguage(userId);
+  const userLang = getUserLang(userId);
   const learningLang = store.getUserLearningLanguage(userId);
   const actions = getKeyboardActions(userLang);
 
   // Handle language selection
-  if (messageText === '🇬🇧 English') {
+  if (messageText === LANG_ENGLISH) {
     store.setUserLanguage(userId, 'en');
     await ctx.reply(t('language.changed', 'en'), {
       reply_markup: createMainMenu('en', learningLang)
@@ -56,7 +74,7 @@ export async function handleTextMessage(ctx: Context): Promise<void> {
     return;
   }
 
-  if (messageText === '🇷🇺 Русский') {
+  if (messageText === LANG_RUSSIAN) {
     store.setUserLanguage(userId, 'ru');
     await ctx.reply(t('language.changed', 'ru'), {
       reply_markup: createMainMenu('ru', learningLang)
@@ -73,10 +91,15 @@ export async function handleTextMessage(ctx: Context): Promise<void> {
   }
 
   // Handle learning language selection
-  if (messageText.startsWith('🇭🇺') || messageText === 'Hungarian') {
+  if (
+    messageText.startsWith(FLAG_HUNGARIAN) ||
+    messageText === LEARNING_HUNGARIAN
+  ) {
     store.setUserLearningLanguage(userId, 'hungarian');
     await ctx.reply(
-      t('learning_language.changed', userLang, { language: 'Hungarian' }),
+      t('learning_language.changed', userLang, {
+        language: LEARNING_HUNGARIAN
+      }),
       {
         reply_markup: createMainMenu(userLang, 'hungarian')
       }
@@ -84,10 +107,13 @@ export async function handleTextMessage(ctx: Context): Promise<void> {
     return;
   }
 
-  if (messageText.startsWith('🇪🇸') || messageText === 'Spanish') {
+  if (
+    messageText.startsWith(FLAG_SPANISH) ||
+    messageText === LEARNING_SPANISH
+  ) {
     store.setUserLearningLanguage(userId, 'spanish');
     await ctx.reply(
-      t('learning_language.changed', userLang, { language: 'Spanish' }),
+      t('learning_language.changed', userLang, { language: LEARNING_SPANISH }),
       {
         reply_markup: createMainMenu(userLang, 'spanish')
       }
@@ -95,10 +121,10 @@ export async function handleTextMessage(ctx: Context): Promise<void> {
     return;
   }
 
-  if (messageText.startsWith('🇫🇷') || messageText === 'French') {
+  if (messageText.startsWith(FLAG_FRENCH) || messageText === LEARNING_FRENCH) {
     store.setUserLearningLanguage(userId, 'french');
     await ctx.reply(
-      t('learning_language.changed', userLang, { language: 'French' }),
+      t('learning_language.changed', userLang, { language: LEARNING_FRENCH }),
       {
         reply_markup: createMainMenu(userLang, 'french')
       }
@@ -106,10 +132,10 @@ export async function handleTextMessage(ctx: Context): Promise<void> {
     return;
   }
 
-  if (messageText.startsWith('🇩🇪') || messageText === 'German') {
+  if (messageText.startsWith(FLAG_GERMAN) || messageText === LEARNING_GERMAN) {
     store.setUserLearningLanguage(userId, 'german');
     await ctx.reply(
-      t('learning_language.changed', userLang, { language: 'German' }),
+      t('learning_language.changed', userLang, { language: LEARNING_GERMAN }),
       {
         reply_markup: createMainMenu(userLang, 'german')
       }
@@ -117,10 +143,13 @@ export async function handleTextMessage(ctx: Context): Promise<void> {
     return;
   }
 
-  if (messageText.startsWith('🇮🇹') || messageText === 'Italian') {
+  if (
+    messageText.startsWith(FLAG_ITALIAN) ||
+    messageText === LEARNING_ITALIAN
+  ) {
     store.setUserLearningLanguage(userId, 'italian');
     await ctx.reply(
-      t('learning_language.changed', userLang, { language: 'Italian' }),
+      t('learning_language.changed', userLang, { language: LEARNING_ITALIAN }),
       {
         reply_markup: createMainMenu(userLang, 'italian')
       }
@@ -367,8 +396,8 @@ export async function handleTextMessage(ctx: Context): Promise<void> {
         const role = msg.role === 'user' ? '👤 You' : '🤖 Bot';
         return `${index + 1}. [${timeStr}] ${role}:\n${msg.content.substring(
           0,
-          100
-        )}${msg.content.length > 100 ? '...' : ''}`;
+          DIARY_SUMMARY_LIMIT
+        )}${msg.content.length > DIARY_SUMMARY_LIMIT ? '...' : ''}`;
       })
       .join('\n\n');
 
@@ -522,13 +551,13 @@ export async function handleTextMessage(ctx: Context): Promise<void> {
 
   // Handle Basic subscription purchase
   if (messageText === actions.SUBSCRIBE_BASIC) {
-    await createSubscriptionInvoice(ctx, 'BASIC');
+    await createSubscriptionInvoice(ctx, SUBSCRIPTION_BASIC);
     return;
   }
 
   // Handle Premium subscription purchase
   if (messageText === actions.SUBSCRIBE_PREMIUM) {
-    await createSubscriptionInvoice(ctx, 'PREMIUM');
+    await createSubscriptionInvoice(ctx, SUBSCRIPTION_PREMIUM);
     return;
   }
 

@@ -11,18 +11,16 @@ import {
   FontSize,
   FontStyle
 } from '../services/worksheet';
+import { t, LEARNING_LANGUAGE_TO_NAME } from '../services/i18n';
 import {
-  t,
-  SupportedLearningLanguage,
-  LEARNING_LANGUAGE_TO_NAME
-} from '../services/i18n';
-
-// Constants for callback query data
-const CALLBACK_WORKSHEET_TYPE = 'worksheet_type:';
-const CALLBACK_WORKSHEET_LETTER_CASE = 'worksheet_letter_case:';
-const CALLBACK_WORKSHEET_SIZE = 'worksheet_size:';
-const CALLBACK_WORKSHEET_FONT_STYLE = 'worksheet_font_style:';
-const CALLBACK_WORKSHEET_GENERATE = 'worksheet_generate:';
+  CALLBACK_WORKSHEET_TYPE,
+  CALLBACK_WORKSHEET_LETTER_CASE,
+  CALLBACK_WORKSHEET_SIZE,
+  CALLBACK_WORKSHEET_FONT_STYLE,
+  CALLBACK_WORKSHEET_GENERATE,
+  DEFAULT_LINE_COUNT
+} from '../constants/worksheetHandler';
+import { getUserLang } from '../utils/handlerUtils';
 
 /**
  * Handle worksheet menu action
@@ -32,7 +30,7 @@ export async function handleWorksheetMenu(ctx: Context): Promise<void> {
   const userId = ctx.from?.id;
   if (!userId) return;
 
-  const userLang = store.getUserLanguage(userId);
+  const userLang = getUserLang(userId);
   const learningLanguage = store.getUserLearningLanguage(userId);
 
   // Create keyboard with worksheet type options
@@ -81,7 +79,7 @@ export async function handleWorksheetCallback(ctx: Context): Promise<void> {
   const userId = ctx.from?.id;
   if (!userId) return;
 
-  const userLang = store.getUserLanguage(userId);
+  const userLang = getUserLang(userId);
   const learningLanguage = store.getUserLearningLanguage(userId);
   const data = ctx.callbackQuery.data;
 
@@ -208,7 +206,7 @@ export async function handleWorksheetCallback(ctx: Context): Promise<void> {
         fontSize,
         letterCase,
         fontStyle,
-        lineCount: 3
+        lineCount: DEFAULT_LINE_COUNT
       };
 
       const filePath = await generateWorksheet(userId, options);

@@ -9,6 +9,7 @@ import {
 } from '../config';
 import { createMainMenu } from '../bot/keyboards';
 import { store } from '../store';
+import { getUserLang } from '../utils/handlerUtils';
 
 /**
  * Start the active user communication worker
@@ -28,7 +29,7 @@ export function startActiveUserWorker(bot: Bot): NodeJS.Timeout {
 
         try {
           // Get user language
-          const userLang = store.getUserLanguage(userId);
+          const userLang = getUserLang(userId);
           const learningLang = store.getUserLearningLanguage(userId);
 
           // Send a message to keep the conversation active
