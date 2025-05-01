@@ -4,6 +4,11 @@
 import OpenAI from 'openai';
 import { promises as fs } from 'fs';
 
+// Import DatabaseService
+import { DatabaseService } from '../DatabaseService';
+// Import token calculator
+import { tokenizeAndEstimateCost } from '../token-calculator';
+
 import {
   OPENAI_API_KEY,
   MAX_CHUNK_TOKENS,
@@ -50,17 +55,52 @@ export const MODELS = {
  * Base function for making chat completions
  * @param prompt - Prompt text
  * @param temperature - Temperature for response generation (0-1)
+ * @param telegramId - Telegram user ID for logging (optional)
+ * @param databaseService - Database service for logging (optional)
  * @returns Generated text
  */
 export async function chatCompletion(
   prompt: string,
-  temperature: number = 0.7
+  temperature: number = 0.7,
+  telegramId?: number,
+  databaseService?: DatabaseService
 ): Promise<string> {
   const completion = await openrouter.chat.completions.create({
     model: MODELS.CHAT,
     messages: [{ role: 'user', content: prompt }],
     temperature
   });
+
+  // Log LLM request if telegramId and databaseService are provided
+  if (telegramId && databaseService) {
+    const inputTokens = completion.usage?.prompt_tokens || 0;
+    const outputTokens = completion.usage?.completion_tokens || 0;
+    const response = completion.choices[0]?.message?.content || '';
+
+    // Calculate cost using token calculator
+    const tokenResult = await tokenizeAndEstimateCost({
+      model: MODELS.CHAT,
+      input: prompt,
+      output: response
+    });
+
+    // Use the more accurate token count from the API if available
+    const finalInputTokens = inputTokens || tokenResult.inputTokens;
+    const finalOutputTokens = outputTokens || tokenResult.outputTokens;
+
+    // Use the calculated cost or fallback
+    const cost =
+      tokenResult.cost || (finalInputTokens + finalOutputTokens) * 0.00001;
+
+    await databaseService.logLlmRequest(
+      telegramId,
+      'chat',
+      MODELS.CHAT,
+      cost,
+      finalInputTokens,
+      finalOutputTokens
+    );
+  }
 
   return completion.choices[0]?.message?.content ?? '';
 }
@@ -73,7 +113,9 @@ export async function correctAndReply(
   language: SupportedLanguage = 'ru',
   chatHistory: { role: 'user' | 'assistant'; content: string }[] = [],
   maxHistoryTokens: number = 800,
-  learningLanguage: SupportedLearningLanguage = 'hungarian'
+  learningLanguage: SupportedLearningLanguage = 'hungarian',
+  telegramId?: number,
+  databaseService?: DatabaseService
 ): Promise<string> {
   const languageName = LEARNING_LANGUAGE_TO_NAME[learningLanguage];
 
@@ -105,6 +147,9 @@ Guidelines:
       { role: 'user', content: userText }
     ] as { role: 'system' | 'user' | 'assistant'; content: string }[];
 
+    // Serialize the entire prompt for token counting
+    const fullPrompt = JSON.stringify(messages);
+
     // Call the OpenAI API
     const response = await openrouter.chat.completions.create({
       model: MODELS.CHAT,
@@ -114,7 +159,39 @@ Guidelines:
       presence_penalty: 0.6
     });
 
-    return response.choices[0].message.content || '';
+    const responseText = response.choices[0].message.content || '';
+
+    // Log LLM request if telegramId and databaseService are provided
+    if (telegramId && databaseService) {
+      const inputTokens = response.usage?.prompt_tokens || 0;
+      const outputTokens = response.usage?.completion_tokens || 0;
+
+      // Calculate cost using token calculator
+      const tokenResult = await tokenizeAndEstimateCost({
+        model: MODELS.CHAT,
+        input: fullPrompt,
+        output: responseText
+      });
+
+      // Use the more accurate token count from the API if available
+      const finalInputTokens = inputTokens || tokenResult.inputTokens;
+      const finalOutputTokens = outputTokens || tokenResult.outputTokens;
+
+      // Use the calculated cost or fallback
+      const cost =
+        tokenResult.cost || (finalInputTokens + finalOutputTokens) * 0.00001;
+
+      await databaseService.logLlmRequest(
+        telegramId,
+        'chat',
+        MODELS.CHAT,
+        cost,
+        finalInputTokens,
+        finalOutputTokens
+      );
+    }
+
+    return responseText;
   } catch (error) {
     console.error('Error in conversation API call:', error);
     // Provide fallback response if API call fails
@@ -130,7 +207,9 @@ export async function correctAndReplyWithWords(
   language: SupportedLanguage = 'ru',
   chatHistory: { role: 'user' | 'assistant'; content: string }[] = [],
   maxHistoryTokens: number = 800,
-  learningLanguage: SupportedLearningLanguage = 'hungarian'
+  learningLanguage: SupportedLearningLanguage = 'hungarian',
+  telegramId?: number,
+  databaseService?: DatabaseService
 ): Promise<{ text: string; words: { front: string; back: string }[] }> {
   const languageName = LEARNING_LANGUAGE_TO_NAME[learningLanguage];
 
@@ -183,6 +262,9 @@ Example response format:
       { role: 'user', content: userText }
     ] as { role: 'system' | 'user' | 'assistant'; content: string }[];
 
+    // Serialize the entire prompt for token counting
+    const fullPrompt = JSON.stringify(messages);
+
     // Call the OpenAI API
     const response = await openrouter.chat.completions.create({
       model: MODELS.CHAT,
@@ -194,11 +276,41 @@ Example response format:
 
     const content = response.choices[0].message.content || '';
 
+    // Log LLM request if telegramId and databaseService are provided
+    if (telegramId && databaseService) {
+      const inputTokens = response.usage?.prompt_tokens || 0;
+      const outputTokens = response.usage?.completion_tokens || 0;
+
+      // Calculate cost using token calculator
+      const tokenResult = await tokenizeAndEstimateCost({
+        model: MODELS.CHAT,
+        input: fullPrompt,
+        output: content
+      });
+
+      // Use the more accurate token count from the API if available
+      const finalInputTokens = inputTokens || tokenResult.inputTokens;
+      const finalOutputTokens = outputTokens || tokenResult.outputTokens;
+
+      // Use the calculated cost or fallback
+      const cost =
+        tokenResult.cost || (finalInputTokens + finalOutputTokens) * 0.00001;
+
+      await databaseService.logLlmRequest(
+        telegramId,
+        'chat',
+        MODELS.CHAT,
+        cost,
+        finalInputTokens,
+        finalOutputTokens
+      );
+    }
+
     try {
-      const response = JSON.parse(content);
+      const parsedResponse = JSON.parse(extractJsonContent(content));
       return {
-        text: response.text || '',
-        words: Array.isArray(response.words) ? response.words : []
+        text: parsedResponse.text || '',
+        words: Array.isArray(parsedResponse.words) ? parsedResponse.words : []
       };
     } catch (error) {
       console.error('Failed to parse JSON response:', error);
@@ -220,16 +332,35 @@ Example response format:
   }
 }
 
+export function extractJsonContent(text: string) {
+  if (!text) {
+    return '';
+  }
+
+  const regex = /```json\s*([\s\S]*?)\s*```/;
+  const match = text.match(regex);
+
+  if (match && match[1]) {
+    return match[1].trim();
+  }
+
+  return text;
+}
+
 /**
  * Synthesizes speech using OpenAI TTS
  * @param text - Text to convert to speech
  * @param filePath - Output file path
  * @param voice - Voice to use for synthesis
+ * @param telegramId - Telegram user ID for logging (optional)
+ * @param databaseService - Database service for logging (optional)
  */
 export async function synthesizeSpeech(
   text: string,
   filePath: string,
-  voice: OpenAIVoice = 'nova'
+  voice: OpenAIVoice = 'nova',
+  telegramId?: number,
+  databaseService?: DatabaseService
 ): Promise<void> {
   const response = await openai.audio.speech.create({
     model: MODELS.TTS,
@@ -237,21 +368,42 @@ export async function synthesizeSpeech(
     voice
   });
 
+  // Log TTS request if telegramId and databaseService are provided
+  if (telegramId && databaseService) {
+    // Use tokenizeAndEstimateCost to get token count and costs
+    const tokenResult = await tokenizeAndEstimateCost({
+      model: MODELS.TTS,
+      input: text
+    });
+
+    // Calculate audio duration in seconds (approx. 150 words per minute)
+    const wordCount = text.split(/\s+/).length;
+    const audioSeconds = wordCount / 2.5; // 150 words per minute = 2.5 words per second
+
+    await databaseService.logLlmRequest(
+      telegramId,
+      'tts',
+      MODELS.TTS,
+      tokenResult.cost || text.length * 0.000015, // Fallback if cost not provided
+      tokenResult.inputTokens,
+      0,
+      audioSeconds
+    );
+  }
+
   const buffer = Buffer.from(await response.arrayBuffer());
   await fs.writeFile(filePath, buffer);
 }
 
 /**
  * Processes text to extract word pairs between learning language and user language
- * @param fullText - Text to process
- * @param learningLanguage - The language being learned
- * @param userLanguage - The user's native language
- * @returns Array of word pairs
  */
 export async function extractWordPairs(
   fullText: string,
   learningLanguage: SupportedLearningLanguage = 'hungarian',
-  userLanguage: SupportedLanguage = 'ru'
+  userLanguage: SupportedLanguage = 'ru',
+  telegramId?: number,
+  databaseService?: DatabaseService
 ): Promise<{ front: string; back: string }[]> {
   const learningLanguageName = LEARNING_LANGUAGE_TO_NAME[learningLanguage];
   const userLanguageName = CODE_TO_LANGUAGE[userLanguage];
@@ -268,7 +420,14 @@ Text:
 """
 ${fullText}
 """`;
-  const response = await chatCompletion(prompt, 0.3);
+
+  const response = await chatCompletion(
+    prompt,
+    0.3,
+    telegramId,
+    databaseService
+  );
+
   const uniquePairs = new Map<string, { front: string; back: string }>();
 
   response
@@ -291,17 +450,14 @@ ${fullText}
 
 /**
  * Generates phrases for dictation in the learning language
- * @param language - The learning language
- * @param difficulty - Difficulty level
- * @param count - Number of phrases to generate
- * @param wordsOnly - Whether to generate single words instead of phrases
- * @returns Array of phrases or words in the learning language
  */
 export async function generatePhrases(
   language: SupportedLearningLanguage,
   difficulty: DictationDifficulty,
   count: number,
-  wordsOnly: boolean = false
+  wordsOnly: boolean = false,
+  telegramId?: number,
+  databaseService?: DatabaseService
 ): Promise<string[]> {
   const languageName = LEARNING_LANGUAGE_TO_NAME[language];
 
@@ -353,7 +509,12 @@ ${
 
 ${contentType.charAt(0).toUpperCase() + contentType.slice(1)}:`;
 
-  const response = await chatCompletion(prompt, 0.7);
+  const response = await chatCompletion(
+    prompt,
+    0.7,
+    telegramId,
+    databaseService
+  );
 
   return response
     .split('\n')
@@ -364,13 +525,12 @@ ${contentType.charAt(0).toUpperCase() + contentType.slice(1)}:`;
 
 /**
  * Generates a story for dictation in the learning language
- * @param language - The learning language
- * @param difficulty - Difficulty level
- * @returns Array of story sentences
  */
 export async function generateStory(
   language: SupportedLearningLanguage,
-  difficulty: DictationDifficulty
+  difficulty: DictationDifficulty,
+  telegramId?: number,
+  databaseService?: DatabaseService
 ): Promise<string[]> {
   const languageName = LEARNING_LANGUAGE_TO_NAME[language];
 
@@ -398,20 +558,15 @@ Requirements:
 
 Story:`;
 
-  const response = await chatCompletion(prompt, 0.7);
+  const response = await chatCompletion(
+    prompt,
+    0.7,
+    telegramId,
+    databaseService
+  );
 
   return response
     .split('\n')
     .map((line) => line.trim())
     .filter((line) => line.length > 0);
 }
-
-// For backward compatibility
-export const generateHungarianPhrases = (
-  difficulty: DictationDifficulty,
-  count: number,
-  wordsOnly: boolean = false
-) => generatePhrases('hungarian', difficulty, count, wordsOnly);
-
-export const generateHungarianStory = (difficulty: DictationDifficulty) =>
-  generateStory('hungarian', difficulty);

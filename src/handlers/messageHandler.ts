@@ -48,6 +48,11 @@ import {
   SUBSCRIPTION_BASIC,
   SUBSCRIPTION_PREMIUM
 } from '../constants/messageHandler';
+import { UserMode } from '../types';
+import { DatabaseService } from '../services/DatabaseService';
+
+// Create a database service instance for logging
+const databaseService = new DatabaseService();
 
 /**
  * Handle text messages from users
@@ -61,8 +66,8 @@ export async function handleTextMessage(ctx: Context): Promise<void> {
   if (!userId || !messageText) return;
 
   // Get user's language preference
-  const userLang = getUserLang(userId);
-  const learningLang = store.getUserLearningLanguage(userId);
+  const userLang = await getUserLang(userId, ctx.from);
+  const learningLang = await store.getUserLearningLanguage(userId, ctx.from);
   const actions = getKeyboardActions(userLang);
 
   // Handle language selection
@@ -180,7 +185,7 @@ export async function handleTextMessage(ctx: Context): Promise<void> {
       reply_markup: createMainMenu(userLang)
     });
 
-    const entries = store.getUserDiaryEntries(userId);
+    const entries = await store.getUserDiaryEntries(userId);
     if (entries.length > 0) {
       // Process the last entry
       const lastEntry = entries[entries.length - 1];
@@ -235,7 +240,7 @@ export async function handleTextMessage(ctx: Context): Promise<void> {
   }
 
   if (messageText === actions.GENERATE_ANKI) {
-    const entries = store.getUserProcessedDiaryEntries(userId);
+    const entries = await store.getUserProcessedDiaryEntries(userId);
     if (entries.length === 0) {
       await ctx.reply(t('anki.need_diary', userLang), {
         reply_markup: createMainMenu(userLang)
@@ -327,12 +332,53 @@ export async function handleTextMessage(ctx: Context): Promise<void> {
     return;
   }
 
+  // Handle /start command
+  if (messageText === '/start') {
+    store.setUserMode(userId, UserMode.DEFAULT);
+    store.setUserDiaryMode(userId, false); // Also disable diary mode on /start
+
+    await ctx.reply(t('general.choose_action', userLang), {
+      reply_markup: createMainMenu(userLang, learningLang)
+    });
+    return;
+  }
+
+  if (messageText === actions.BACK_TO_MENU) {
+    // Reset user mode to default
+    store.setUserMode(userId, UserMode.DEFAULT);
+    // Also disable diary mode if the user was in diary mode
+    store.setUserDiaryMode(userId, false);
+
+    await ctx.reply(t('general.choose_action', userLang), {
+      reply_markup: createMainMenu(userLang, learningLang)
+    });
+    return;
+  }
+
+  if (messageText === actions.STOP_DICTATION) {
+    store.endDictation(userId);
+    await ctx.reply(t('dictation.stopped', userLang), {
+      reply_markup: createMainMenu(userLang)
+    });
+    return;
+  }
+
+  if (messageText === actions.MY_ACHIEVEMENTS) {
+    const points = await store.getPoints(userId);
+    const level = getUserLevel(points);
+    await ctx.reply(t('achievements.stats', userLang, { points, level }), {
+      reply_markup: createMainMenu(userLang)
+    });
+    return;
+  }
+
+  // Move diary mode text check here, after all menu button handlers
   // Handle diary mode text
-  if (store.isUserInDiaryMode(userId)) {
+  if (await store.isUserInDiaryMode(userId)) {
     const entry = {
       text: messageText,
       date: new Date().toISOString(),
-      userId
+      telegramId: userId
     };
     store.addDiaryEntry(userId, entry);
     await ctx.reply(t('diary.continue', userLang), {
@@ -343,7 +389,7 @@ export async function handleTextMessage(ctx: Context): Promise<void> {
 
   // Check for keyboard actions
   if (messageText === actions.PRACTICE_LANGUAGE) {
-    store.setUserActive(userId);
+    store.setUserPracticeMode(userId, true);
     store.clearUserChatHistory(userId); // Start with a clean conversation
 
     // Add system welcome message to the history as an assistant message
@@ -376,7 +422,7 @@ export async function handleTextMessage(ctx: Context): Promise<void> {
   }
 
   if (messageText === actions.VIEW_CHAT) {
-    const chatHistory = store.getUserChatHistory(userId);
+    const chatHistory = await store.getUserChatHistory(userId);
 
     if (chatHistory.length === 0) {
       await ctx.reply(t('chat.empty', userLang), {
@@ -469,38 +515,9 @@ export async function handleTextMessage(ctx: Context): Promise<void> {
     return;
   }
 
-  if (messageText === actions.BACK_TO_MENU) {
-    // If user was in diary mode, disable it
-    if (store.isUserInDiaryMode(userId)) {
-      store.setUserDiaryMode(userId, false);
-    }
-
-    await ctx.reply(t('general.choose_action', userLang), {
-      reply_markup: createMainMenu(userLang, learningLang)
-    });
-    return;
-  }
-
-  if (messageText === actions.STOP_DICTATION) {
-    store.endDictation(userId);
-    await ctx.reply(t('dictation.stopped', userLang), {
-      reply_markup: createMainMenu(userLang)
-    });
-    return;
-  }
-
-  if (messageText === actions.MY_ACHIEVEMENTS) {
-    const points = store.getPoints(userId);
-    const level = getUserLevel(points);
-    await ctx.reply(t('achievements.stats', userLang, { points, level }), {
-      reply_markup: createMainMenu(userLang)
-    });
-    return;
-  }
-
   // View user vocabulary
   if (messageText === actions.VIEW_VOCABULARY) {
-    const vocabulary = store.getUserVocabulary(userId);
+    const vocabulary = await store.getUserVocabulary(userId);
 
     if (vocabulary.length === 0) {
       await ctx.reply(t('vocabulary.empty', userLang), {
@@ -638,7 +655,7 @@ export async function handleTextMessage(ctx: Context): Promise<void> {
   }
 
   // Handle normal messages
-  if (!store.isUserActive(userId)) {
+  if (!(await store.isUserInPracticeMode(userId))) {
     await ctx.reply(t('general.choose_action', userLang), {
       reply_markup: createMainMenu(userLang)
     });
@@ -660,7 +677,7 @@ export async function handleTextMessage(ctx: Context): Promise<void> {
   );
 
   // Get recent chat history
-  const chatHistory = store.getUserChatHistory(userId);
+  const chatHistory = await store.getUserChatHistory(userId, 10);
   const formattedHistory = chatHistory.slice(0, -1).map((msg) => ({
     role: msg.role,
     content: msg.content
@@ -672,7 +689,9 @@ export async function handleTextMessage(ctx: Context): Promise<void> {
     userLang,
     formattedHistory,
     CHAT_HISTORY_TOKENS,
-    learningLang
+    learningLang,
+    userId, // Pass userId for logging
+    databaseService // Pass database service for logging
   );
 
   // Save assistant's reply to chat history

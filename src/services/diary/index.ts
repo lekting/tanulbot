@@ -1,7 +1,7 @@
 import * as fs from 'fs/promises';
 import { store } from '../../store';
 import { DiaryEntry, ProcessedDiaryEntry, WordPair } from '../../types';
-import { chatCompletion } from '../openai';
+import { chatCompletion, extractJsonContent } from '../openai';
 import * as path from 'path';
 import { ensureUserDir } from '../../config';
 import {
@@ -12,8 +12,12 @@ import {
 import { normalizeText } from '../../utils/text';
 import { execFile as execFileCallback } from 'child_process';
 import { promisify } from 'util';
+import { DatabaseService } from '../DatabaseService';
 
 const execFile = promisify(execFileCallback);
+
+// Create a database service instance for logging
+const databaseService = new DatabaseService();
 
 // Define the response structure for type safety
 interface ProcessedDiaryResult {
@@ -36,7 +40,9 @@ export async function processDiaryEntry(
   language: SupportedLanguage
 ): Promise<ProcessedDiaryEntry> {
   // Get the user's learning language
-  const learningLanguage = store.getUserLearningLanguage(entry.userId);
+  const learningLanguage = await store.getUserLearningLanguage(
+    entry.telegramId
+  );
   const languageName = LEARNING_LANGUAGE_TO_NAME[learningLanguage];
   const nativeLanguageName = CODE_TO_LANGUAGE[language];
 
@@ -62,12 +68,20 @@ Create a JSON response with these fields:
 Format as valid JSON.`;
 
   try {
-    const content = await chatCompletion(prompt);
+    const content = await chatCompletion(
+      prompt,
+      0.7,
+      entry.telegramId, // Pass user ID for logging
+      databaseService // Pass database service for logging
+    );
+
     if (!content) {
       throw new Error('Empty response from LLM');
     }
 
-    const result = JSON.parse(content) as ProcessedDiaryResult;
+    const result = JSON.parse(
+      extractJsonContent(content)
+    ) as ProcessedDiaryResult;
 
     // Map word pairs to expected format
     const wordPairs: WordPair[] = result.wordPairs.map((pair) => ({
@@ -102,7 +116,7 @@ export async function createAnkiDeck(
   filePath?: string;
 }> {
   // Get the user's learning language
-  const learningLanguage = store.getUserLearningLanguage(userId);
+  const learningLanguage = await store.getUserLearningLanguage(userId);
   const languageName = LEARNING_LANGUAGE_TO_NAME[learningLanguage];
 
   try {
@@ -187,7 +201,7 @@ export async function generateLearningSuggestions(
   const userId = entries[0]?.originalText
     ? parseInt(entries[0].originalText)
     : 0;
-  const learningLanguage = store.getUserLearningLanguage(userId);
+  const learningLanguage = await store.getUserLearningLanguage(userId);
   const languageName = LEARNING_LANGUAGE_TO_NAME[learningLanguage];
 
   // Extract all word pairs
@@ -213,7 +227,12 @@ Keep each tip brief (1-2 sentences).
 `;
 
   try {
-    const response = await chatCompletion(prompt);
+    const response = await chatCompletion(
+      prompt,
+      0.7,
+      userId, // Pass user ID for logging
+      databaseService // Pass database service for logging
+    );
     // Split the response into separate tips
     return response
       .split('\n')

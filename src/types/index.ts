@@ -96,7 +96,7 @@ export type OpenAIVoice =
 export interface DiaryEntry {
   text: string;
   date: string;
-  userId: number;
+  telegramId: number;
 }
 
 /**
@@ -124,4 +124,15 @@ export interface AnkiDeck {
   date: string;
   userId: number;
   filePath?: string;
+}
+
+/**
+ * User mode enum to track where a user is in the application
+ */
+export enum UserMode {
+  DEFAULT = 'default',
+  PRACTICE = 'practice',
+  DIARY = 'diary',
+  DICTATION = 'dictation',
+  WORKSHEET = 'worksheet'
 }

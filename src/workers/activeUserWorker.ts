@@ -29,8 +29,8 @@ export function startActiveUserWorker(bot: Bot): NodeJS.Timeout {
 
         try {
           // Get user language
-          const userLang = getUserLang(userId);
-          const learningLang = store.getUserLearningLanguage(userId);
+          const userLang = await getUserLang(userId);
+          const learningLang = await store.getUserLearningLanguage(userId);
 
           // Send a message to keep the conversation active
           await bot.api.sendMessage(userId, phrase, {

@@ -1,14 +1,18 @@
+import { User } from 'grammy/types';
 import { DEFAULT_LANGUAGE, SupportedLanguage } from '../services/i18n';
 import { store } from '../store';
 
 /**
  * Get user language safely handling undefined user IDs
  */
-export function getUserLang(userId: number | undefined): SupportedLanguage {
+export async function getUserLang(
+  userId: number | undefined,
+  telegramUser?: User
+): Promise<SupportedLanguage> {
   if (userId === undefined) {
     return DEFAULT_LANGUAGE; // Default to English if no user ID
   }
-  return store.getUserLanguage(userId);
+  return store.getUserLanguage(userId, telegramUser);
 }
 
 /**

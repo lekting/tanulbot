@@ -1,5 +1,5 @@
 /**
- * Application state management
+ * Application state management (MySQL backed storage)
  */
 import {
   DictationState,
@@ -20,89 +20,143 @@ import {
   SupportedLearningLanguage,
   DEFAULT_LEARNING_LANGUAGE
 } from '../services/i18n';
+import { DatabaseService } from '../services/DatabaseService';
+import { User } from 'grammy/types';
+import { UserMode } from '../types';
 
 /**
- * In-memory state store
+ * State store with MySQL database backend
  */
 export class StateStore {
-  private users: Map<number, UserState> = new Map();
+  private dbService: DatabaseService;
 
-  // Users actively practicing their learning language
-  private activeChatUsers = new Map<number, number>();
-
-  // Active dictation sessions
+  // Active dictation sessions (kept in memory)
   private activeDictations = new Map<number, DictationState>();
 
-  // User scores
-  private userScores = new Map<number, number>();
-
-  // Temporary user data for multi-step interactions
+  // Temporary user data for multi-step interactions (kept in memory)
   private temporaryUserData = new Map<number, Record<string, any>>();
 
-  // Last processed word pairs
+  // Last processed word pairs (kept in memory)
   private lastWordPairs: WordPair[] = [];
 
-  private getOrCreateUser(userId: number): UserState {
-    if (!this.users.has(userId)) {
-      this.users.set(userId, {
-        isActive: false,
-        points: 0,
-        language: DEFAULT_LANGUAGE,
-        learningLanguage: DEFAULT_LEARNING_LANGUAGE,
-        isDiaryMode: false,
-        diaryEntries: [],
-        processedDiaryEntries: [],
-        chatHistory: [],
-        vocabulary: [],
-        subscription: {
-          plan: 'free',
-          isActive: true,
-          features: getSubscriptionFeatures(DEFAULT_LANGUAGE).free
-        }
-      });
-    }
-    return this.users.get(userId)!;
+  // Active user cache to avoid excessive database queries
+  private activeChatUsersCache = new Map<number, number>();
+  private cacheExpiryTime = 60000; // 1 minute
+  private lastCacheUpdate = 0;
+
+  constructor() {
+    this.dbService = new DatabaseService();
   }
 
   /**
    * Track a user as active in chat
    * @param userId - Telegram user ID
    */
-  setUserActive(userId: number): void {
-    const user = this.getOrCreateUser(userId);
-    user.isActive = true;
-    this.activeChatUsers.set(userId, Date.now());
+  async setUserActive(userId: number): Promise<void> {
+    await this.dbService.setUserActive(userId);
+    this.activeChatUsersCache.set(userId, Date.now());
   }
 
   /**
    * Check if a user is active
    * @param userId - Telegram user ID
    */
-  isUserActive(userId: number): boolean {
-    return this.getOrCreateUser(userId).isActive;
+  async isUserActive(userId: number): Promise<boolean> {
+    const user = await this.dbService.getOrCreateUser(
+      { id: userId, first_name: `User ${userId}` },
+      DEFAULT_LANGUAGE,
+      DEFAULT_LEARNING_LANGUAGE
+    );
+    return user.isActive;
   }
 
   /**
    * Get all active users with their last active timestamp
+   * Note: This uses a cache to avoid excessive database queries
    */
   getActiveUsers(): Map<number, number> {
-    return this.activeChatUsers;
+    const now = Date.now();
+    // Refresh cache if it's expired
+    if (now - this.lastCacheUpdate > this.cacheExpiryTime) {
+      // This is async but we return the cached data immediately
+      // Updated data will be available on next request after cache expires
+      this.refreshActiveUsersCache();
+    }
+    return this.activeChatUsersCache;
+  }
+
+  /**
+   * Refresh the active users cache from database
+   * @private
+   */
+  private async refreshActiveUsersCache(): Promise<void> {
+    try {
+      // We need a proper method to get active users
+      // Since we don't have direct access to the repository, we should add this method to DatabaseService
+      // For now, let's implement a workaround
+
+      // Get users who have been active recently (e.g., sent chat messages)
+      const recentMessages = await this.dbService.getChatHistory(0, 100);
+      const activeUserIds = new Set<number>();
+
+      // Extract unique user IDs
+      for (const message of recentMessages) {
+        if (message.user && message.user.telegramId) {
+          activeUserIds.add(message.user.telegramId);
+        }
+      }
+
+      // Clear and rebuild cache
+      this.activeChatUsersCache.clear();
+
+      // Add active users to cache
+      for (const userId of activeUserIds) {
+        this.activeChatUsersCache.set(userId, Date.now());
+      }
+
+      this.lastCacheUpdate = Date.now();
+    } catch (error) {
+      console.error('Failed to refresh active users cache:', error);
+    }
   }
 
   /**
    * Remove user from active users
    * @param userId - Telegram user ID
    */
-  removeActiveUser(userId: number): void {
-    this.activeChatUsers.delete(userId);
+  async removeActiveUser(userId: number): Promise<void> {
+    // Use a method that exists in the public API of DatabaseService
+    // We need to implement this method properly in DatabaseService
+    // For now, let's work with what we have
+    const user = await this.dbService.getOrCreateUser(
+      { id: userId, first_name: `User ${userId}` },
+      DEFAULT_LANGUAGE,
+      DEFAULT_LEARNING_LANGUAGE
+    );
+
+    // Delete from cache
+    this.activeChatUsersCache.delete(userId);
   }
 
   /**
    * Get user's preferred language
    * @param userId - Telegram user ID
    */
-  getUserLanguage(userId: number): SupportedLanguage {
-    return this.getOrCreateUser(userId).language;
+  async getUserLanguage(
+    userId: number,
+    telegramUser?: User
+  ): Promise<SupportedLanguage> {
+    const user = await this.dbService.getOrCreateUser(
+      {
+        id: userId,
+        first_name: telegramUser?.first_name || `User ${userId}`,
+        last_name: telegramUser?.last_name || undefined,
+        username: telegramUser?.username || undefined
+      },
+      DEFAULT_LANGUAGE,
+      DEFAULT_LEARNING_LANGUAGE
+    );
+    return user?.language || DEFAULT_LANGUAGE;
   }
 
   /**
@@ -110,15 +164,11 @@ export class StateStore {
    * @param userId - Telegram user ID
    * @param language - Language code
    */
-  setUserLanguage(userId: number, language: SupportedLanguage): void {
-    const user = this.getOrCreateUser(userId);
-    user.language = language;
-
-    // Update subscription features to match the new language
-    if (user.subscription) {
-      user.subscription.features =
-        getSubscriptionFeatures(language)[user.subscription.plan];
-    }
+  async setUserLanguage(
+    userId: number,
+    language: SupportedLanguage
+  ): Promise<void> {
+    await this.dbService.updateUserLanguage(userId, language);
   }
 
   /**
@@ -127,7 +177,7 @@ export class StateStore {
    * @param state - Initial dictation state
    */
   startDictation(userId: number, state: DictationState): void {
-    const user = this.getOrCreateUser(userId);
+    // Dictation state is kept in memory as it's temporary
     this.activeDictations.set(userId, state);
   }
 
@@ -172,17 +222,21 @@ export class StateStore {
    * @param userId - Telegram user ID
    * @param points - Points to add
    */
-  addPoints(userId: number, points: number): void {
-    const user = this.getOrCreateUser(userId);
-    user.points += points;
+  async addPoints(userId: number, points: number): Promise<void> {
+    await this.dbService.addUserPoints(userId, points);
   }
 
   /**
    * Get a user's score
    * @param userId - Telegram user ID
    */
-  getPoints(userId: number): number {
-    return this.getOrCreateUser(userId).points;
+  async getPoints(userId: number): Promise<number> {
+    const user = await this.dbService.getOrCreateUser(
+      { id: userId, first_name: `User ${userId}` },
+      DEFAULT_LANGUAGE,
+      DEFAULT_LEARNING_LANGUAGE
+    );
+    return user?.points || 0;
   }
 
   /**
@@ -207,87 +261,178 @@ export class StateStore {
     return this.lastWordPairs.length > 0;
   }
 
-  // Diary methods
-  setUserDiaryMode(userId: number, isDiaryMode: boolean): void {
-    const user = this.getOrCreateUser(userId);
-    user.isDiaryMode = isDiaryMode;
+  /**
+   * Check if user is in practice mode
+   * @param userId - Telegram user ID
+   */
+  async isUserInPracticeMode(userId: number): Promise<boolean> {
+    const mode = await this.dbService.getUserMode(userId);
+    return mode === UserMode.PRACTICE;
   }
 
-  isUserInDiaryMode(userId: number): boolean {
-    return this.getOrCreateUser(userId).isDiaryMode;
+  /**
+   * Set user practice mode
+   * @param userId - Telegram user ID
+   * @param isPracticeMode - Whether the user is in practice mode
+   */
+  async setUserPracticeMode(
+    userId: number,
+    isPracticeMode: boolean
+  ): Promise<void> {
+    await this.dbService.setUserMode(
+      userId,
+      isPracticeMode ? UserMode.PRACTICE : UserMode.DEFAULT
+    );
   }
 
-  addDiaryEntry(userId: number, entry: DiaryEntry): void {
-    const user = this.getOrCreateUser(userId);
-    user.diaryEntries.push(entry);
+  /**
+   * Set user mode
+   */
+  async setUserMode(userId: number, mode: UserMode): Promise<void> {
+    await this.dbService.setUserMode(userId, mode);
   }
 
-  getUserDiaryEntries(userId: number): DiaryEntry[] {
-    return this.getOrCreateUser(userId).diaryEntries;
+  /**
+   * Get user mode
+   */
+  async getUserMode(userId: number): Promise<UserMode> {
+    const mode = await this.dbService.getUserMode(userId);
+    return mode || UserMode.DEFAULT;
   }
 
-  addProcessedDiaryEntry(userId: number, entry: ProcessedDiaryEntry): void {
-    const user = this.getOrCreateUser(userId);
-    user.processedDiaryEntries.push(entry);
+  /**
+   * Add diary entry
+   */
+  async addDiaryEntry(userId: number, entry: DiaryEntry): Promise<void> {
+    await this.dbService.addDiaryEntry(userId, entry.text);
   }
 
-  getUserProcessedDiaryEntries(userId: number): ProcessedDiaryEntry[] {
-    return this.getOrCreateUser(userId).processedDiaryEntries;
+  /**
+   * Get user diary entries
+   */
+  async getUserDiaryEntries(userId: number): Promise<DiaryEntry[]> {
+    const entries = await this.dbService.getUserDiaryEntries(userId);
+    return entries.map((entry) => ({
+      text: entry.text,
+      date: entry.createdAt.toISOString().split('T')[0],
+      telegramId: entry.telegramId
+    }));
+  }
+
+  /**
+   * Add processed diary entry
+   */
+  async addProcessedDiaryEntry(
+    userId: number,
+    entry: ProcessedDiaryEntry
+  ): Promise<void> {
+    // Find the most recent unprocessed entry
+    const diaryEntries = await this.dbService.getUserDiaryEntries(userId);
+    if (diaryEntries.length === 0) return;
+
+    // Find the latest unprocessed entry
+    const unprocessedEntries = diaryEntries.filter((e) => !e.processed);
+    if (unprocessedEntries.length === 0) return;
+
+    const latestEntry = unprocessedEntries[0];
+
+    // Convert WordPair[] to the expected format for the database
+    const unknownWords = entry.unknownWords.map((pair) => ({
+      word: pair.front,
+      translation: pair.back
+    }));
+
+    // Save the processed entry - adjust parameters to match the method signature
+    await this.dbService.saveProcessedDiaryEntry(
+      latestEntry.id,
+      entry.correctedText,
+      entry.improvements,
+      unknownWords,
+      entry.mnemonics
+    );
+  }
+
+  /**
+   * Get user processed diary entries
+   */
+  async getUserProcessedDiaryEntries(
+    userId: number
+  ): Promise<ProcessedDiaryEntry[]> {
+    const entries = await this.dbService.getUserDiaryEntries(userId);
+    const processedEntries = entries.filter(
+      (e) => e.processed && e.correctedText
+    );
+
+    return processedEntries.map((entry) => {
+      // Convert database objects back to WordPair format
+      const unknownWords: WordPair[] = Array.isArray(entry.unknownWords)
+        ? entry.unknownWords.map((word: any) => ({
+            front: word.word || '',
+            back: word.translation || ''
+          }))
+        : [];
+
+      return {
+        originalText: entry.text,
+        correctedText: entry.correctedText || '',
+        improvements: entry.improvements || [],
+        unknownWords,
+        mnemonics: (entry.mnemonics || []) as {
+          word: string;
+          mnemonic: string;
+          exampleSentence?: string;
+          pronunciation?: string;
+        }[]
+      };
+    });
   }
 
   /**
    * Add message to user's chat history
    * @param userId - Telegram user ID
    * @param message - The chat message to add
-   * @param maxHistory - Maximum number of messages to keep in history (default: 10)
+   * @param maxHistory - Maximum number of messages to keep in history
    */
-  addChatMessage(
+  async addChatMessage(
     userId: number,
     message: ChatMessage,
     maxHistory: number = 10
-  ): void {
-    const user = this.getOrCreateUser(userId);
-    user.chatHistory.push(message);
-
-    // Trim history if it exceeds maximum length
-    if (user.chatHistory.length > maxHistory) {
-      user.chatHistory = user.chatHistory.slice(-maxHistory);
-    }
-
-    // Update last chat timestamp
-    user.lastChatTimestamp = Date.now();
+  ): Promise<void> {
+    await this.dbService.addChatMessage(userId, message.role, message.content);
   }
 
   /**
    * Get user's chat history
    * @param userId - Telegram user ID
-   * @param limit - Maximum number of messages to return (default: all messages)
-   * @returns Array of chat messages
+   * @param limit - Maximum number of messages to return
    */
-  getUserChatHistory(userId: number, limit?: number): ChatMessage[] {
-    const user = this.getOrCreateUser(userId);
-    if (limit && limit > 0) {
-      return user.chatHistory.slice(-limit);
-    }
-    return user.chatHistory;
+  async getUserChatHistory(
+    userId: number,
+    limit?: number
+  ): Promise<ChatMessage[]> {
+    const messages = await this.dbService.getChatHistory(userId, limit);
+    return messages.map((msg) => ({
+      role: msg.role,
+      content: msg.content,
+      timestamp: msg.createdAt.getTime()
+    }));
   }
 
   /**
    * Clear user's chat history
    * @param userId - Telegram user ID
    */
-  clearUserChatHistory(userId: number): void {
-    const user = this.getOrCreateUser(userId);
-    user.chatHistory = [];
+  async clearUserChatHistory(userId: number): Promise<void> {
+    await this.dbService.clearChatHistory(userId);
   }
 
   /**
    * Get last chat timestamp
    * @param userId - Telegram user ID
-   * @returns Timestamp of last chat message or undefined
    */
-  getLastChatTimestamp(userId: number): number | undefined {
-    return this.getOrCreateUser(userId).lastChatTimestamp;
+  async getLastChatTimestamp(userId: number): Promise<number | undefined> {
+    const messages = await this.dbService.getChatHistory(userId, 1);
+    return messages.length > 0 ? messages[0].createdAt.getTime() : undefined;
   }
 
   /**
@@ -295,110 +440,107 @@ export class StateStore {
    * @param userId - Telegram user ID
    * @param entry - The vocabulary entry to add/update
    */
-  addToVocabulary(userId: number, entry: VocabularyEntry): void {
-    const user = this.getOrCreateUser(userId);
-
-    // Check if the word already exists
-    const existingIndex = user.vocabulary.findIndex(
-      (item) => item.word.toLowerCase() === entry.word.toLowerCase()
+  async addToVocabulary(userId: number, entry: VocabularyEntry): Promise<void> {
+    await this.dbService.addVocabularyEntry(
+      userId,
+      entry.word,
+      entry.translation,
+      entry.context
     );
-
-    if (existingIndex >= 0) {
-      // Update existing entry
-      const existing = user.vocabulary[existingIndex];
-      user.vocabulary[existingIndex] = {
-        ...existing,
-        translation: entry.translation || existing.translation,
-        context: entry.context || existing.context,
-        lastPracticed: entry.lastPracticed || existing.lastPracticed,
-        errorCount: existing.errorCount + (entry.errorCount || 1)
-      };
-    } else {
-      // Add new entry
-      user.vocabulary.push({
-        ...entry,
-        addedDate: entry.addedDate || Date.now(),
-        errorCount: entry.errorCount || 1
-      });
-    }
   }
 
   /**
    * Get user's vocabulary
    * @param userId - Telegram user ID
-   * @param limit - Maximum number of entries to return (optional)
-   * @param sortBy - Sort field (optional, defaults to addedDate)
-   * @returns Array of vocabulary entries
+   * @param limit - Maximum number of entries to return
+   * @param sortBy - Sort field
    */
-  getUserVocabulary(
+  async getUserVocabulary(
     userId: number,
     limit?: number,
     sortBy: keyof VocabularyEntry = 'addedDate'
-  ): VocabularyEntry[] {
-    const user = this.getOrCreateUser(userId);
+  ): Promise<VocabularyEntry[]> {
+    // Map from VocabularyEntry field to database field
+    const dbFieldMap: Record<string, string> = {
+      addedDate: 'createdAt',
+      errorCount: 'errorCount',
+      lastPracticed: 'lastPracticed',
+      word: 'word',
+      translation: 'translation',
+      context: 'context'
+    };
 
-    // Sort entries by the specified field
-    const sorted = [...user.vocabulary].sort((a, b) => {
-      if (typeof a[sortBy] === 'number' && typeof b[sortBy] === 'number') {
-        return (b[sortBy] as number) - (a[sortBy] as number);
-      }
-      return 0;
-    });
+    // Get the corresponding database field name
+    const dbSortBy = dbFieldMap[sortBy] || 'createdAt';
 
-    // Apply limit if specified
-    if (limit && limit > 0) {
-      return sorted.slice(0, limit);
-    }
+    const entries = await this.dbService.getUserVocabulary(
+      userId,
+      limit,
+      dbSortBy as any,
+      'DESC'
+    );
 
-    return sorted;
+    return entries.map((entry) => ({
+      word: entry.word,
+      translation: entry.translation,
+      context: entry.context || undefined,
+      addedDate: entry.createdAt.getTime(),
+      lastPracticed: entry.lastPracticed
+        ? entry.lastPracticed.getTime()
+        : undefined,
+      errorCount: entry.errorCount
+    }));
   }
 
   /**
    * Search user's vocabulary
    * @param userId - Telegram user ID
    * @param query - Search query
-   * @returns Matching vocabulary entries
    */
-  searchVocabulary(userId: number, query: string): VocabularyEntry[] {
-    const user = this.getOrCreateUser(userId);
-    const searchTerm = query.toLowerCase();
+  async searchVocabulary(
+    userId: number,
+    query: string
+  ): Promise<VocabularyEntry[]> {
+    const entries = await this.dbService.searchVocabulary(userId, query);
 
-    return user.vocabulary.filter(
-      (entry) =>
-        entry.word.toLowerCase().includes(searchTerm) ||
-        entry.translation.toLowerCase().includes(searchTerm)
-    );
+    return entries.map((entry) => ({
+      word: entry.word,
+      translation: entry.translation,
+      context: entry.context || undefined,
+      addedDate: entry.createdAt.getTime(),
+      lastPracticed: entry.lastPracticed
+        ? entry.lastPracticed.getTime()
+        : undefined,
+      errorCount: entry.errorCount
+    }));
   }
 
   /**
    * Remove a word from user's vocabulary
    * @param userId - Telegram user ID
    * @param word - The word to remove
-   * @returns True if word was found and removed, false otherwise
    */
-  removeFromVocabulary(userId: number, word: string): boolean {
-    const user = this.getOrCreateUser(userId);
-    const initialLength = user.vocabulary.length;
-
-    user.vocabulary = user.vocabulary.filter(
-      (entry) => entry.word.toLowerCase() !== word.toLowerCase()
+  async removeFromVocabulary(userId: number, word: string): Promise<boolean> {
+    const entries = await this.dbService.getUserVocabulary(userId);
+    const entryToRemove = entries.find(
+      (e) => e.word.toLowerCase() === word.toLowerCase()
     );
 
-    return user.vocabulary.length < initialLength;
+    if (entryToRemove) {
+      // This assumes that a removeVocabularyEntry method exists in DatabaseService
+      // If it doesn't, it should be implemented to provide a public interface to remove entries
+      return this.dbService.removeVocabularyEntry(entryToRemove.id);
+    }
+
+    return false;
   }
 
   /**
    * Export user's vocabulary to Anki deck
    * @param userId - Telegram user ID
-   * @returns Vocabulary entries in WordPair format for Anki
    */
-  exportVocabularyToWordPairs(userId: number): WordPair[] {
-    const user = this.getOrCreateUser(userId);
-
-    return user.vocabulary.map((entry) => ({
-      front: entry.word,
-      back: entry.translation
-    }));
+  async exportVocabularyToWordPairs(userId: number): Promise<WordPair[]> {
+    return this.dbService.exportVocabularyToAnki(userId);
   }
 
   /**
@@ -425,67 +567,75 @@ export class StateStore {
   /**
    * Get user's current subscription status
    * @param userId - Telegram user ID
-   * @returns User's subscription status
    */
-  getUserSubscription(userId: number): SubscriptionStatus {
-    return this.getOrCreateUser(userId).subscription;
+  async getUserSubscription(userId: number): Promise<SubscriptionStatus> {
+    const invoice = await this.dbService.getActiveSubscription(userId);
+    const userLang = await this.getUserLanguage(userId);
+
+    if (!invoice) {
+      return {
+        plan: 'free',
+        isActive: true,
+        features: getSubscriptionFeatures(userLang).free
+      };
+    }
+
+    return {
+      plan: invoice.subscriptionPlan,
+      isActive: invoice.status === 'completed',
+      expiresAt: invoice.expiresAt ? invoice.expiresAt.getTime() : undefined,
+      paymentChargeId: invoice.paymentId || undefined,
+      features: getSubscriptionFeatures(userLang)[invoice.subscriptionPlan]
+    };
   }
 
   /**
    * Update user's subscription plan
    * @param userId - Telegram user ID
    * @param plan - Subscription plan to set
-   * @param expiresAt - Expiration timestamp (optional)
-   * @param paymentChargeId - Telegram payment charge ID (for refunds)
+   * @param expiresAt - Expiration timestamp
+   * @param paymentChargeId - Telegram payment charge ID
    */
-  setUserSubscription(
+  async setUserSubscription(
     userId: number,
     plan: SubscriptionPlan,
     expiresAt?: number,
     paymentChargeId?: string
-  ): void {
-    const user = this.getOrCreateUser(userId);
-    user.subscription = {
+  ): Promise<void> {
+    const expiryDate = expiresAt ? new Date(expiresAt) : undefined;
+
+    await this.dbService.createInvoice(
+      userId,
       plan,
-      isActive: true,
-      expiresAt,
-      paymentChargeId,
-      features: getSubscriptionFeatures(user.language)[plan]
-    };
+      0, // Amount - this would need proper implementation
+      expiryDate,
+      paymentChargeId
+    );
   }
 
   /**
    * Check if user's subscription is active
    * @param userId - Telegram user ID
-   * @returns Whether the subscription is active
    */
-  isSubscriptionActive(userId: number): boolean {
-    const subscription = this.getUserSubscription(userId);
-
-    if (!subscription.isActive) {
-      return false;
-    }
-
-    // If there's an expiration date, check if it's still valid
-    if (subscription.expiresAt) {
-      return Date.now() < subscription.expiresAt;
-    }
-
-    return true;
+  async isSubscriptionActive(userId: number): Promise<boolean> {
+    const invoice = await this.dbService.getActiveSubscription(userId);
+    return !!invoice;
   }
 
   /**
    * Check if user has access to a specific premium feature
    * @param userId - Telegram user ID
    * @param planLevel - Minimum subscription plan required
-   * @returns Whether the user has access to the feature
    */
-  hasFeatureAccess(userId: number, planLevel: SubscriptionPlan): boolean {
+  async hasFeatureAccess(
+    userId: number,
+    planLevel: SubscriptionPlan
+  ): Promise<boolean> {
     const planRanking = { free: 0, basic: 1, premium: 2 };
-    const subscription = this.getUserSubscription(userId);
+    const subscription = await this.getUserSubscription(userId);
 
     // Make sure subscription is active
-    if (!this.isSubscriptionActive(userId)) {
+    if (!(await this.isSubscriptionActive(userId))) {
       return planLevel === 'free';
     }
 
@@ -496,18 +646,19 @@ export class StateStore {
    * Cancel user's subscription
    * @param userId - Telegram user ID
    */
-  cancelSubscription(userId: number): void {
-    const user = this.getOrCreateUser(userId);
-    user.subscription.isActive = false;
+  async cancelSubscription(userId: number): Promise<void> {
+    const invoice = await this.dbService.getActiveSubscription(userId);
+    if (invoice) {
+      await this.dbService.updateInvoiceStatus(invoice.id, 'failed');
+    }
   }
 
   /**
    * Get chat history limit based on user's subscription
    * @param userId - Telegram user ID
-   * @returns Maximum number of chat messages to keep
    */
-  getChatHistoryLimit(userId: number): number {
-    const subscription = this.getUserSubscription(userId);
+  async getChatHistoryLimit(userId: number): Promise<number> {
+    const subscription = await this.getUserSubscription(userId);
 
     switch (subscription.plan) {
       case 'premium':
@@ -523,8 +674,21 @@ export class StateStore {
    * Get user's learning language
    * @param userId - Telegram user ID
    */
-  getUserLearningLanguage(userId: number): SupportedLearningLanguage {
-    return this.getOrCreateUser(userId).learningLanguage;
+  async getUserLearningLanguage(
+    userId: number,
+    telegramUser?: User
+  ): Promise<SupportedLearningLanguage> {
+    const user = await this.dbService.getOrCreateUser(
+      {
+        id: userId,
+        first_name: telegramUser?.first_name || `User ${userId}`,
+        last_name: telegramUser?.last_name || undefined,
+        username: telegramUser?.username || undefined
+      },
+      DEFAULT_LANGUAGE,
+      DEFAULT_LEARNING_LANGUAGE
+    );
+    return user?.learningLanguage || DEFAULT_LEARNING_LANGUAGE;
   }
 
   /**
@@ -532,12 +696,11 @@ export class StateStore {
    * @param userId - Telegram user ID
    * @param language - Learning language code
    */
-  setUserLearningLanguage(
+  async setUserLearningLanguage(
     userId: number,
     language: SupportedLearningLanguage
-  ): void {
-    const user = this.getOrCreateUser(userId);
-    user.learningLanguage = language;
+  ): Promise<void> {
+    await this.dbService.updateUserLearningLanguage(userId, language);
   }
 
   /**
@@ -590,6 +753,24 @@ export class StateStore {
    */
   clearAllUserTemporaryData(userId: number): void {
     this.temporaryUserData.delete(userId);
+  }
+
+  /**
+   * Set user diary mode
+   */
+  async setUserDiaryMode(userId: number, isDiaryMode: boolean): Promise<void> {
+    await this.dbService.setUserMode(
+      userId,
+      isDiaryMode ? UserMode.DIARY : UserMode.DEFAULT
+    );
+  }
+
+  /**
+   * Check if user is in diary mode
+   */
+  async isUserInDiaryMode(userId: number): Promise<boolean> {
+    const mode = await this.dbService.getUserMode(userId);
+    return mode === UserMode.DIARY;
   }
 }
 

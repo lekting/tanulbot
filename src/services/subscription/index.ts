@@ -16,8 +16,8 @@ export async function createSubscriptionInvoice(
   if (!ctx.from) return;
 
   const userId = ctx.from.id;
-  const userLang = getUserLang(userId);
-  const plans = getSubscriptionPlans(userLang);
+  const userLang = await getUserLang(userId);
+  const plans = await getSubscriptionPlans(userLang);
   const planConfig = plans[plan];
 
   // Create invoice
@@ -79,7 +79,7 @@ export async function processSuccessfulPayment(ctx: Context): Promise<void> {
   }
 
   const userId = ctx.from.id;
-  const userLang = getUserLang(userId);
+  const userLang = await getUserLang(userId);
   const payment = ctx.message.successful_payment;
 
   try {
@@ -95,7 +95,7 @@ export async function processSuccessfulPayment(ctx: Context): Promise<void> {
     const plan = payload.plan as SubscriptionPlan;
     // Convert plan to uppercase for config lookup
     const planKey = plan === 'basic' ? 'BASIC' : 'PREMIUM';
-    const plans = getSubscriptionPlans(userLang);
+    const plans = await getSubscriptionPlans(userLang);
     const planConfig = plans[planKey];
 
     // Calculate expiration time
@@ -130,8 +130,8 @@ export async function cancelSubscription(ctx: Context): Promise<void> {
   if (!ctx.from) return;
 
   const userId = ctx.from.id;
-  const userLang = getUserLang(userId);
-  const subscription = store.getUserSubscription(userId);
+  const userLang = await getUserLang(userId);
+  const subscription = await store.getUserSubscription(userId);
 
   // Check if subscription is active and has payment ID
   if (!subscription.isActive || !subscription.paymentChargeId) {
@@ -162,8 +162,8 @@ export async function getSubscriptionStatus(ctx: Context): Promise<void> {
   if (!ctx.from) return;
 
   const userId = ctx.from.id;
-  const userLang = getUserLang(userId);
-  const subscription = store.getUserSubscription(userId);
+  const userLang = await getUserLang(userId);
+  const subscription = await store.getUserSubscription(userId);
 
   let statusMessage = t('subscription.status_display', userLang, {
     plan: subscription.plan,

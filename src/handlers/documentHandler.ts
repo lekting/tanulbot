@@ -51,15 +51,15 @@ export async function handleDocumentUpload(ctx: Context): Promise<void> {
     await ctx.reply(t('document.user_not_identified', 'en'));
     return;
   }
+  const userLang = await getUserLang(userId, ctx.from);
   try {
     const file = ctx.message?.document;
     if (!file) {
-      await ctx.reply(t('document.file_not_found', getUserLang(userId)));
+      await ctx.reply(t('document.file_not_found', userLang));
       return;
     }
 
     const userDir = await ensureUserDir(userId);
-    const userLang = getUserLang(userId);
 
     if (file.file_size && file.file_size > MAX_BOT_FILE_SIZE) {
       const instructionsKeyboard = new InlineKeyboard().url(
@@ -115,11 +115,11 @@ export async function handleDocumentUpload(ctx: Context): Promise<void> {
           if (info.estimatedTimeRemaining) {
             const formattedTime = formatTime(
               info.estimatedTimeRemaining,
-              getUserLang(userId)
+              userLang
             );
             statusMessage +=
               '\n' +
-              t('general.time.estimated', getUserLang(userId), {
+              t('general.time.estimated', userLang, {
                 time: formattedTime
               });
           }
@@ -128,14 +128,14 @@ export async function handleDocumentUpload(ctx: Context): Promise<void> {
             if (info.currentPage !== undefined) {
               statusMessage +=
                 '\n' +
-                t('general.page.current', getUserLang(userId), {
+                t('general.page.current', userLang, {
                   current: info.currentPage,
                   total: info.pageCount
                 });
             } else {
               statusMessage +=
                 '\n' +
-                t('general.page.total', getUserLang(userId), {
+                t('general.page.total', userLang, {
                   count: info.pageCount
                 });
             }
@@ -173,20 +173,20 @@ export async function handleDocumentUpload(ctx: Context): Promise<void> {
       await ctx.api.editMessageText(
         ctx.chat?.id || ctx.from?.id || 0,
         processingMsg.message_id,
-        t('document.extraction_failed', getUserLang(userId))
+        t('document.extraction_failed', userLang)
       );
       await fs.unlink(filePath);
       return;
     }
 
     const extractionMethod = ocrUsed
-      ? t('document.extraction_ocr', getUserLang(userId))
-      : t('document.extraction_direct', getUserLang(userId));
+      ? t('document.extraction_ocr', userLang)
+      : t('document.extraction_direct', userLang);
 
     await ctx.api.editMessageText(
       ctx.chat?.id || ctx.from?.id || 0,
       processingMsg.message_id,
-      t('document.extraction_success', getUserLang(userId), {
+      t('document.extraction_success', userLang, {
         method: extractionMethod
       })
     );
@@ -198,11 +198,11 @@ export async function handleDocumentUpload(ctx: Context): Promise<void> {
     const tokens = inputTokens + outputTokens;
 
     const keyboard = new InlineKeyboard()
-      .text(t('document.continue', getUserLang(userId)), CALLBACK_ACCEPT)
-      .text(t('document.cancel', getUserLang(userId)), CALLBACK_CANCEL);
+      .text(t('document.continue', userLang), CALLBACK_ACCEPT)
+      .text(t('document.cancel', userLang), CALLBACK_CANCEL);
 
     const tokenMessage = await ctx.reply(
-      t('document.text_analysis', getUserLang(userId), {
+      t('document.text_analysis', userLang, {
         pages: pageCount,
         tokens: tokens,
         cost: cost?.toFixed(4) || '0.00'
@@ -223,12 +223,12 @@ export async function handleDocumentUpload(ctx: Context): Promise<void> {
 
     if (error instanceof Error) {
       if (error.message.includes('file is too big')) {
-        await ctx.reply(t('document.large_file_error', getUserLang(userId)));
+        await ctx.reply(t('document.large_file_error', userLang));
         return;
       }
     }
 
-    await ctx.reply(t('document.error_processing', getUserLang(userId)));
+    await ctx.reply(t('document.error_processing', userLang));
   }
 }
 
@@ -236,8 +236,8 @@ export async function handleDocumentCallback(ctx: Context): Promise<void> {
   if (!ctx.callbackQuery?.data || !ctx.from?.id) return;
 
   const userId = ctx.from.id;
+  const userLang = await getUserLang(userId);
   try {
-    const userLang = getUserLang(userId);
     const data = ctx.callbackQuery.data;
 
     const task = pendingTasks.get(userId);
@@ -342,8 +342,6 @@ export async function handleDocumentCallback(ctx: Context): Promise<void> {
     }
   } catch (error) {
     console.error('Error handling callback:', error);
-    await ctx.answerCallbackQuery(
-      t('document.callback_error', getUserLang(userId))
-    );
+    await ctx.answerCallbackQuery(t('document.callback_error', userLang));
   }
 }

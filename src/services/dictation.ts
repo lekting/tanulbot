@@ -19,6 +19,10 @@ import { synthesizeSpeech, generatePhrases, generateStory } from './openai';
 import { prepareForAudio, prepareTextForAudio } from '../utils/text';
 import { SupportedLearningLanguage } from '../services/i18n';
 import { store } from '../store';
+import { DatabaseService } from './DatabaseService';
+
+// Create a database service instance for logging
+const databaseService = new DatabaseService();
 
 /**
  * Generates dictation phrases with audio based on difficulty
@@ -35,7 +39,7 @@ export async function generateDictationPhrasesByDifficulty(
   // Ensure user audio directory exists
   const userAudioDir = await ensureUserDir(userId, 'audio');
   // Get user's learning language
-  const learningLanguage = store.getUserLearningLanguage(userId);
+  const learningLanguage = await store.getUserLearningLanguage(userId);
 
   let generatedPhrases: string[] = [];
 
@@ -46,17 +50,27 @@ export async function generateDictationPhrasesByDifficulty(
       learningLanguage,
       difficulty,
       MAX_DICTATION_PHRASES,
-      true // Single words mode
+      true, // Single words mode
+      userId, // Pass userId for logging
+      databaseService // Pass database service for logging
     );
   } else if (format === 'stories') {
     // For stories format, generate a short story
-    generatedPhrases = await generateStory(learningLanguage, difficulty);
+    generatedPhrases = await generateStory(
+      learningLanguage,
+      difficulty,
+      userId, // Pass userId for logging
+      databaseService // Pass database service for logging
+    );
   } else {
     // Default to phrases
     generatedPhrases = await generatePhrases(
       learningLanguage,
       difficulty,
-      MAX_DICTATION_PHRASES
+      MAX_DICTATION_PHRASES,
+      false,
+      userId, // Pass userId for logging
+      databaseService // Pass database service for logging
     );
   }
 
@@ -80,7 +94,13 @@ export async function generateDictationPhrasesByDifficulty(
   for (let i = 0; i < phrases.length; i++) {
     const phrase = phrases[i];
     const audioText = prepareForAudio(phrase.text, i, learningLanguage);
-    await synthesizeSpeech(audioText, phrase.audioPath);
+    await synthesizeSpeech(
+      audioText,
+      phrase.audioPath,
+      'nova', // Default voice
+      userId, // Pass userId for logging
+      databaseService // Pass database service for logging
+    );
   }
 
   return phrases;
@@ -99,7 +119,7 @@ export async function generateDictationPhrases(
   // Ensure user audio directory exists
   const userAudioDir = await ensureUserDir(userId, 'audio');
   // Get user's learning language
-  const learningLanguage = store.getUserLearningLanguage(userId);
+  const learningLanguage = await store.getUserLearningLanguage(userId);
 
   // Select a subset of pairs for dictation
   const selectedPairs = wordPairs.slice(0, MAX_DICTATION_PHRASES);
@@ -122,7 +142,13 @@ export async function generateDictationPhrases(
   for (let i = 0; i < phrases.length; i++) {
     const phrase = phrases[i];
     const audioText = prepareForAudio(phrase.text, i, learningLanguage);
-    await synthesizeSpeech(audioText, phrase.audioPath);
+    await synthesizeSpeech(
+      audioText,
+      phrase.audioPath,
+      'nova', // Default voice
+      userId, // Pass userId for logging
+      databaseService // Pass database service for logging
+    );
   }
 
   return phrases;
@@ -137,14 +163,33 @@ export async function generateDictationContent(
   userId: number
 ): Promise<string[]> {
   // Get user's learning language
-  const learningLanguage = store.getUserLearningLanguage(userId);
+  const learningLanguage = await store.getUserLearningLanguage(userId);
 
   if (format === 'words') {
-    return generatePhrases(learningLanguage, difficulty, 5, true);
+    return generatePhrases(
+      learningLanguage,
+      difficulty,
+      5,
+      true,
+      userId, // Pass userId for logging
+      databaseService // Pass database service for logging
+    );
   } else if (format === 'phrases') {
-    return generatePhrases(learningLanguage, difficulty, 5, false);
+    return generatePhrases(
+      learningLanguage,
+      difficulty,
+      5,
+      false,
+      userId, // Pass userId for logging
+      databaseService // Pass database service for logging
+    );
   } else {
-    return generateStory(learningLanguage, difficulty);
+    return generateStory(
+      learningLanguage,
+      difficulty,
+      userId, // Pass userId for logging
+      databaseService // Pass database service for logging
+    );
   }
 }
 
@@ -158,7 +203,7 @@ export async function prepareDictationAudio(
   // Ensure user audio directory exists
   const userAudioDir = await ensureUserDir(userId, 'audio');
   // Get user's learning language
-  const learningLanguage = store.getUserLearningLanguage(userId);
+  const learningLanguage = await store.getUserLearningLanguage(userId);
 
   for (let i = 0; i < phrases.length; i++) {
     const audioText = prepareForAudio(phrases[i], i, learningLanguage);
@@ -166,7 +211,13 @@ export async function prepareDictationAudio(
       userAudioDir,
       `dictation_${userId}_${i + 1}.mp3`
     );
-    await synthesizeSpeech(audioText, audioFile);
+    await synthesizeSpeech(
+      audioText,
+      audioFile,
+      'nova', // Default voice
+      userId, // Pass userId for logging
+      databaseService // Pass database service for logging
+    );
   }
 }
 

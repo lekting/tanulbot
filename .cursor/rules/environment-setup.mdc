@@ -10,6 +10,8 @@ alwaysApply: true
 - Node.js 18+ or later is required
 - PNPM is the package manager used for this project
 - TypeScript 5.8+ is used for type safety
+- Mysql 8+
+- TypeOrm for databases. Create migrations in src/migrations folder
 
 ## Environment Variables
 

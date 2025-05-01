@@ -30,8 +30,8 @@ export async function handleWorksheetMenu(ctx: Context): Promise<void> {
   const userId = ctx.from?.id;
   if (!userId) return;
 
-  const userLang = getUserLang(userId);
-  const learningLanguage = store.getUserLearningLanguage(userId);
+  const userLang = await getUserLang(userId);
+  const learningLanguage = await store.getUserLearningLanguage(userId);
 
   // Create keyboard with worksheet type options
   const keyboard = new InlineKeyboard()
@@ -79,8 +79,8 @@ export async function handleWorksheetCallback(ctx: Context): Promise<void> {
   const userId = ctx.from?.id;
   if (!userId) return;
 
-  const userLang = getUserLang(userId);
-  const learningLanguage = store.getUserLearningLanguage(userId);
+  const userLang = await getUserLang(userId);
+  const learningLanguage = await store.getUserLearningLanguage(userId);
   const data = ctx.callbackQuery.data;
 
   // Handle worksheet type selection

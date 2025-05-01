@@ -19,6 +19,68 @@ A Telegram bot for language learning with AI assistance, dictation practice, and
 - 🌐 **Offline Mode**: Download generated resources for offline study
 - 🌍 **Multiple Languages**: Support for various languages, not limited to Hungarian
 
+## MySQL Database Setup
+
+TanulBot uses MySQL for data persistence. Follow these steps to set up the database:
+
+1. Install MySQL Server 8.0+ on your system
+2. Create a new database and user:
+
+```sql
+CREATE DATABASE tanulbot CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci;
+CREATE USER 'tanulbot_user'@'localhost' IDENTIFIED BY 'your_secure_password';
+GRANT ALL PRIVILEGES ON tanulbot.* TO 'tanulbot_user'@'localhost';
+FLUSH PRIVILEGES;
+```
+
+3. Update your `.env` file with the database credentials:
+
+```
+DB_HOST=localhost
+DB_PORT=3306
+DB_NAME=tanulbot
+DB_USER=tanulbot_user
+DB_PASSWORD=your_secure_password
+```
+
+4. Run the database migration:
+
+```bash
+pnpm migrate
+```
+
+### Database Schema
+
+The database contains the following tables:
+
+- `users` - User information and preferences
+- `chat_messages` - Chat history between users and the bot
+- `invoices` - Payment and subscription information
+- `llm_requests` - Tracking of LLM API usage and costs
+- `vocabulary_entries` - User vocabulary words and learning progress
+- `diary_entries` - User diary entries and corrections
+
+### Migrating Existing Data
+
+If you're upgrading from an older version of TanulBot that used in-memory storage, you can migrate existing data to MySQL:
+
+```bash
+# First, initialize the database schema
+pnpm migrate
+
+# Then, migrate existing data from memory to MySQL
+pnpm migrate-data
+```
+
+The migration process will:
+
+- Create user records in the database
+- Migrate user points, language preferences, and activity status
+- Transfer vocabulary entries with learning progress
+- Move chat history with message content
+- Migrate diary entries with corrections
+- Transfer LLM usage data if available
+
 ## Technologies
 
 - Node.js with TypeScript
@@ -55,29 +117,60 @@ Transform your cooking experience with MealWings – where delicious meets nutri
 src/
 ├── bot/           # Bot-specific components
 ├── config/        # Application configuration
+├── entity/        # TypeORM entity definitions
 ├── handlers/      # Message and event handlers
 ├── services/      # Core services
 ├── store/         # State management
+│   └── repositories/ # Database repositories
 ├── types/         # TypeScript type definitions
 ├── utils/         # Utility functions
 ├── workers/       # Background workers
-└── index.ts       # Application entry point
+├── index.ts       # Application entry point
+├── migrate.ts     # Database migration utility
+└── migrate-data.ts# Data migration utility
 tessdata/          # Tesseract OCR language data
 create-anki-deck.py # Python script for Anki deck generation
 ```
 
-## Getting Started
+## Installation
 
-1. Clone the repository
-2. Install dependencies with `pnpm install`
-3. Create a `.env` file with the following variables:
-   ```
-   TELEGRAM_BOT_TOKEN=your_telegram_bot_token
-   OPENAI_API_KEY=your_openai_api_key
-   ```
-4. Start the bot in development mode with `pnpm dev`
-5. Build for production with `pnpm build`
-6. Start production build with `pnpm start`
+1. Clone this repository
+2. Install dependencies:
+
+```bash
+pnpm install
+```
+
+3. Copy `env.template` to `.env` and add your API keys and configuration
+4. Run the database migration:
+
+```bash
+pnpm migrate
+```
+
+5. Start the development server:
+
+```bash
+pnpm dev
+```
+
+## Production Deployment
+
+1. Build the production version:
+
+```bash
+pnpm build
+```
+
+2. Start the production server:
+
+```bash
+pnpm start
+```
+
+## Environment Variables
+
+See `env.template` for required environment variables.
 
 ## Tesseract OCR Setup
 
