@@ -26,6 +26,27 @@ A Telegram bot for learning Hungarian with AI assistance, dictation practice, an
 - Anki deck generation with Python
 - Tesseract OCR for text extraction
 
+## 🍽️ Check Out MealWings.com
+
+<div align="center">
+  <a href="https://mealwings.com" target="_blank">
+    <img src="https://img.shields.io/badge/Visit-MealWings.com-orange?style=for-the-badge" alt="Visit MealWings.com" />
+  </a>
+</div>
+
+<p align="center"><strong>Your Personalized Culinary Companion</strong></p>
+
+Discover **[MealWings.com](https://mealwings.com)** – the ultimate destination for food enthusiasts:
+
+- 🥗 **Diverse Recipe Collection**: From quick weeknight dinners to gourmet experiences
+- 📋 **Customized Meal Plans**: Tailored nutrition based on your dietary preferences and goals
+- 🥦 **Specialized Diet Plans**: Keto, vegetarian, paleo, and more with expert guidance
+- 🛒 **Smart Shopping Lists**: Automatically generated based on your selected recipes
+- 📱 **Cross-Platform Experience**: Access your favorite recipes anytime, anywhere
+- 👨‍🍳 **Community Features**: Share your culinary creations and connect with fellow food lovers
+
+Transform your cooking experience with MealWings – where delicious meets nutritious!
+
 ## Project Structure
 
 ```
