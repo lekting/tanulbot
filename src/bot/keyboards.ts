@@ -29,7 +29,14 @@ export const KEYBOARD_IDS = {
   DICTATION_TYPE_WORDS: 'dictation.type.words',
   DICTATION_TYPE_PHRASES: 'dictation.type.phrases',
   DICTATION_TYPE_STORIES: 'dictation.type.stories',
-  CHOOSE_DIFFICULTY: 'dictation.choose_difficulty'
+  CHOOSE_DIFFICULTY: 'dictation.choose_difficulty',
+
+  // Subscription actions
+  SUBSCRIPTION_STATUS: 'subscription.status',
+  SUBSCRIPTION_PLANS: 'subscription.plans',
+  SUBSCRIBE_BASIC: 'subscription.basic',
+  SUBSCRIBE_PREMIUM: 'subscription.premium',
+  CANCEL_SUBSCRIPTION: 'subscription.cancel'
 };
 
 /**
@@ -70,7 +77,26 @@ export function createMainMenu(language: SupportedLanguage): Keyboard {
     .text(actions.VIEW_CHAT)
     .text(actions.CLEAR_CHAT)
     .row()
+    .text(actions.SUBSCRIPTION_STATUS)
+    .row()
     .text(`🌐 ${language.toUpperCase()}`)
+    .resized();
+}
+
+/**
+ * Create subscription menu keyboard
+ * @param language - User language
+ */
+export function createSubscriptionMenu(language: SupportedLanguage): Keyboard {
+  const actions = getKeyboardActions(language);
+
+  return new Keyboard()
+    .text(actions.SUBSCRIBE_BASIC)
+    .text(actions.SUBSCRIBE_PREMIUM)
+    .row()
+    .text(actions.CANCEL_SUBSCRIPTION)
+    .row()
+    .text(actions.BACK_TO_MENU)
     .resized();
 }
 

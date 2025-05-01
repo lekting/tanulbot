@@ -10,6 +10,7 @@ import {
   handleTextMessage
 } from './handlers';
 import { startActiveUserWorker, startFileCleanupWorker } from './workers/index';
+import { registerSubscriptionHandlers } from './services/subscription';
 
 // Configure external dependencies
 ffmpeg.setFfmpegPath(FFMPEG_PATH);
@@ -24,6 +25,9 @@ bot.on('callback_query:data', handleDocumentCallback);
 // Register text message handler
 bot.on('message:text', handleTextMessage);
 
+// Register subscription handlers
+registerSubscriptionHandlers(bot);
+
 // Start workers
 const activeUserWorker = startActiveUserWorker(bot);
 const fileCleanupWorker = startFileCleanupWorker();
@@ -35,6 +39,7 @@ bot.start().catch((error) => {
 
 console.log('🤖 TanulBot started!');
 console.log('🌍 Internationalization enabled (ru/en)');
+console.log('💎 Telegram Stars payments enabled');
 
 // Handle application shutdown
 process.once('SIGINT', () => {

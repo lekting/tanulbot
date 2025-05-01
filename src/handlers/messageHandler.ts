@@ -6,7 +6,8 @@ import {
   getKeyboardActions,
   createLanguageMenu,
   createDictationMenu,
-  createDictationTypeMenu
+  createDictationTypeMenu,
+  createSubscriptionMenu
 } from '../bot/keyboards';
 import { correctAndReplyWithWords } from '../services/openai/index';
 import { generateDictationPhrasesByDifficulty } from '../services/dictation';
@@ -22,6 +23,11 @@ import {
 import { t } from '../services/i18n';
 import fs from 'fs/promises';
 import { CHAT_HISTORY_TOKENS, MAX_CHAT_HISTORY } from '../config';
+import {
+  createSubscriptionInvoice,
+  cancelSubscription,
+  getSubscriptionStatus
+} from '../services/subscription';
 
 /**
  * Handle text messages from users
@@ -429,6 +435,33 @@ export async function handleTextMessage(ctx: Context): Promise<void> {
         : '');
 
     await ctx.reply(message, { reply_markup: createMainMenu(userLang) });
+    return;
+  }
+
+  // Handle subscription status request
+  if (messageText === actions.SUBSCRIPTION_STATUS) {
+    await getSubscriptionStatus(ctx);
+    await ctx.reply(t('subscription.options', userLang), {
+      reply_markup: createSubscriptionMenu(userLang)
+    });
+    return;
+  }
+
+  // Handle Basic subscription purchase
+  if (messageText === actions.SUBSCRIBE_BASIC) {
+    await createSubscriptionInvoice(ctx, 'BASIC');
+    return;
+  }
+
+  // Handle Premium subscription purchase
+  if (messageText === actions.SUBSCRIBE_PREMIUM) {
+    await createSubscriptionInvoice(ctx, 'PREMIUM');
+    return;
+  }
+
+  // Handle subscription cancellation
+  if (messageText === actions.CANCEL_SUBSCRIPTION) {
+    await cancelSubscription(ctx);
     return;
   }
 

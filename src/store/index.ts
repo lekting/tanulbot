@@ -9,9 +9,15 @@ import {
   UserState,
   ChatMessage,
   VocabularyEntry,
-  DictationFormat
+  DictationFormat,
+  SubscriptionPlan,
+  SubscriptionStatus
 } from '../types';
-import { SupportedLanguage, DEFAULT_LANGUAGE } from '../services/i18n';
+import {
+  SupportedLanguage,
+  DEFAULT_LANGUAGE,
+  getSubscriptionFeatures
+} from '../services/i18n';
 
 /**
  * In-memory state store
@@ -41,7 +47,12 @@ export class StateStore {
         diaryEntries: [],
         processedDiaryEntries: [],
         chatHistory: [],
-        vocabulary: []
+        vocabulary: [],
+        subscription: {
+          plan: 'free',
+          isActive: true,
+          features: getSubscriptionFeatures(DEFAULT_LANGUAGE).free
+        }
       });
     }
     return this.users.get(userId)!;
@@ -54,6 +65,7 @@ export class StateStore {
   setUserActive(userId: number): void {
     const user = this.getOrCreateUser(userId);
     user.isActive = true;
+    this.activeChatUsers.set(userId, Date.now());
   }
 
   /**
@@ -95,6 +107,12 @@ export class StateStore {
   setUserLanguage(userId: number, language: SupportedLanguage): void {
     const user = this.getOrCreateUser(userId);
     user.language = language;
+
+    // Update subscription features to match the new language
+    if (user.subscription) {
+      user.subscription.features =
+        getSubscriptionFeatures(language)[user.subscription.plan];
+    }
   }
 
   /**
@@ -395,6 +413,103 @@ export class StateStore {
         points: 0,
         format: type
       });
+    }
+  }
+
+  /**
+   * Get user's current subscription status
+   * @param userId - Telegram user ID
+   * @returns User's subscription status
+   */
+  getUserSubscription(userId: number): SubscriptionStatus {
+    return this.getOrCreateUser(userId).subscription;
+  }
+
+  /**
+   * Update user's subscription plan
+   * @param userId - Telegram user ID
+   * @param plan - Subscription plan to set
+   * @param expiresAt - Expiration timestamp (optional)
+   * @param paymentChargeId - Telegram payment charge ID (for refunds)
+   */
+  setUserSubscription(
+    userId: number,
+    plan: SubscriptionPlan,
+    expiresAt?: number,
+    paymentChargeId?: string
+  ): void {
+    const user = this.getOrCreateUser(userId);
+    user.subscription = {
+      plan,
+      isActive: true,
+      expiresAt,
+      paymentChargeId,
+      features: getSubscriptionFeatures(user.language)[plan]
+    };
+  }
+
+  /**
+   * Check if user's subscription is active
+   * @param userId - Telegram user ID
+   * @returns Whether the subscription is active
+   */
+  isSubscriptionActive(userId: number): boolean {
+    const subscription = this.getUserSubscription(userId);
+
+    if (!subscription.isActive) {
+      return false;
+    }
+
+    // If there's an expiration date, check if it's still valid
+    if (subscription.expiresAt) {
+      return Date.now() < subscription.expiresAt;
+    }
+
+    return true;
+  }
+
+  /**
+   * Check if user has access to a specific premium feature
+   * @param userId - Telegram user ID
+   * @param planLevel - Minimum subscription plan required
+   * @returns Whether the user has access to the feature
+   */
+  hasFeatureAccess(userId: number, planLevel: SubscriptionPlan): boolean {
+    const planRanking = { free: 0, basic: 1, premium: 2 };
+    const subscription = this.getUserSubscription(userId);
+
+    // Make sure subscription is active
+    if (!this.isSubscriptionActive(userId)) {
+      return planLevel === 'free';
+    }
+
+    return planRanking[subscription.plan] >= planRanking[planLevel];
+  }
+
+  /**
+   * Cancel user's subscription
+   * @param userId - Telegram user ID
+   */
+  cancelSubscription(userId: number): void {
+    const user = this.getOrCreateUser(userId);
+    user.subscription.isActive = false;
+  }
+
+  /**
+   * Get chat history limit based on user's subscription
+   * @param userId - Telegram user ID
+   * @returns Maximum number of chat messages to keep
+   */
+  getChatHistoryLimit(userId: number): number {
+    const subscription = this.getUserSubscription(userId);
+
+    switch (subscription.plan) {
+      case 'premium':
+        return 50; // Unlimited for our purposes
+      case 'basic':
+        return 20;
+      default:
+        return 10;
     }
   }
 }

@@ -1,6 +1,7 @@
 /**
  * Internationalization (i18n) service
  */
+import { SubscriptionPlan } from '../../types';
 
 // Supported languages
 export type SupportedLanguage = 'en' | 'ru';
@@ -12,6 +13,68 @@ export const CODE_TO_LANGUAGE: Record<SupportedLanguage, string> = {
 
 // Default language
 export const DEFAULT_LANGUAGE: SupportedLanguage = 'ru';
+
+/**
+ * Subscription features for each plan with translations
+ */
+export const getSubscriptionFeatures = (
+  language: SupportedLanguage
+): Record<SubscriptionPlan, string[]> => {
+  const features = {
+    en: {
+      free: [
+        'Basic dictation exercises',
+        'Simple diary corrections',
+        'Limited vocabulary tracking',
+        'Standard chat history (10 messages)'
+      ],
+      basic: [
+        'Advanced dictation exercises',
+        'Detailed diary corrections',
+        'Enhanced vocabulary tracking',
+        'Extended chat history (20 messages)',
+        'Basic Anki deck exports'
+      ],
+      premium: [
+        'Expert dictation exercises with native audio',
+        'Comprehensive diary analysis with mnemonics',
+        'Full vocabulary management',
+        'Unlimited chat history',
+        'Custom Anki deck exports',
+        'Priority processing'
+      ]
+    },
+    ru: {
+      free: [
+        'Базовые упражнения диктанта',
+        'Простые исправления дневника',
+        'Ограниченное отслеживание словаря',
+        'Стандартная история чата (10 сообщений)'
+      ],
+      basic: [
+        'Расширенные упражнения диктанта',
+        'Детальные исправления дневника',
+        'Улучшенное отслеживание словаря',
+        'Расширенная история чата (20 сообщений)',
+        'Базовый экспорт колод Anki'
+      ],
+      premium: [
+        'Экспертные упражнения диктанта с аудио носителей языка',
+        'Комплексный анализ дневника с мнемоническими подсказками',
+        'Полное управление словарем',
+        'Неограниченная история чата',
+        'Настраиваемый экспорт колод Anki',
+        'Приоритетная обработка'
+      ]
+    }
+  };
+
+  return {
+    free: features[language]?.free || features.en.free,
+    basic: features[language]?.basic || features.en.basic,
+    premium: features[language]?.premium || features.en.premium
+  };
+};
 
 // Translation strings for each language
 const translations: Record<SupportedLanguage, Record<string, string>> = {
@@ -57,6 +120,30 @@ const translations: Record<SupportedLanguage, Record<string, string>> = {
     'general.time.estimated': '⏱ Estimated time: {time}',
     'general.page.current': '📄 Page {current}/{total}',
     'general.page.total': '📄 Total pages: {count}',
+    'general.yes': 'Yes',
+    'general.no': 'No',
+
+    // Subscription related messages
+    'subscription.status_display':
+      '💎 Subscription Status\n\nPlan: {plan}\nActive: {active}',
+    'subscription.expires': 'Expires: {date}',
+    'subscription.features': 'Features included in your plan',
+    'subscription.options':
+      'Choose a subscription option to upgrade your learning experience:',
+    'subscription.basic': '💫 Basic Plan',
+    'subscription.premium': '✨ Premium Plan',
+    'subscription.cancel': '❌ Cancel Subscription',
+    'subscription.success':
+      '✅ Your subscription to the {plan} is now active!\nExpires on: {expiry}',
+    'subscription.error':
+      '❌ An error occurred while processing your payment. Please try again.',
+    'subscription.no_active':
+      "You don't have an active subscription to cancel.",
+    'subscription.cancelled':
+      '✅ Your subscription has been cancelled and refunded.',
+    'subscription.cancel_error':
+      '❌ An error occurred while cancelling your subscription. Please try again.',
+    'subscription.status': '💎 Subscription Status',
 
     // Diary messages
     'diary.activated':
@@ -147,24 +234,24 @@ const translations: Record<SupportedLanguage, Record<string, string>> = {
     'menu.dictation.start': '✍️ Начать диктант',
     'menu.dictation.stop': '🛑 Остановить диктант',
     'menu.achievements': '🎯 Мои достижения',
-    'menu.back': '⬅️ Назад в меню',
-    'menu.diary.write': '📝 Написать дневник',
+    'menu.back': '⬅️ Вернуться в меню',
+    'menu.diary.write': '📝 Вести дневник',
     'menu.diary.stop': '🛑 Закончить запись',
     'menu.anki': '🎴 Создать карточки Anki',
     'menu.language': '🌐 Изменить язык',
     'menu.vocabulary': '📚 Мой словарь',
 
     // Chat management
-    'chat.clear': '🗑️ Очистить историю чата',
-    'chat.view': '📜 Просмотреть историю чата',
-    'chat.cleared': 'История чата очищена! Начинаем новую беседу.',
+    'chat.clear': '🗑️ Очистить историю',
+    'chat.view': '📜 Посмотреть историю',
+    'chat.cleared': 'История чата очищена! Начинаем новый разговор.',
     'chat.history': 'Ваша недавняя история чата:',
     'chat.empty': 'Ваша история чата пуста.',
 
     // Vocabulary
     'vocabulary.title': '📚 Мой словарь ({count} слов)',
     'vocabulary.empty':
-      'Ваш словарь пуст. Слова будут добавляться в процессе практики венгерского языка в разговорах.',
+      'Ваш словарь пуст. Слова будут добавляться по мере практики венгерского в разговорах.',
     'vocabulary.word_format': '{word} - {translation}',
     'vocabulary.word_added': '💡 Новое слово добавлено в ваш словарь!',
     'vocabulary.words_added': '💡 {count} новых слов добавлено в ваш словарь!',
@@ -175,7 +262,7 @@ const translations: Record<SupportedLanguage, Record<string, string>> = {
     'difficulty.hard': '🔴 Сложный',
 
     // General messages
-    'general.choose_action': 'Выберите действие из меню ниже ⬇️',
+    'general.choose_action': 'Выберите действие в меню ниже ⬇️',
     'general.choose_difficulty': 'Выберите уровень сложности:',
     'general.showing_limited': 'Показано {shown} из {total} элементов',
     'general.time.seconds': '{seconds} сек',
@@ -183,6 +270,29 @@ const translations: Record<SupportedLanguage, Record<string, string>> = {
     'general.time.estimated': '⏱ Примерное время: {time}',
     'general.page.current': '📄 Страница {current}/{total}',
     'general.page.total': '📄 Всего страниц: {count}',
+    'general.yes': 'Да',
+    'general.no': 'Нет',
+
+    // Subscription related messages
+    'subscription.status_display':
+      '💎 Статус подписки\n\nПлан: {plan}\nАктивна: {active}',
+    'subscription.expires': 'Истекает: {date}',
+    'subscription.features': 'Возможности вашего плана',
+    'subscription.options':
+      'Выберите вариант подписки для улучшения вашего обучения:',
+    'subscription.basic': '💫 Базовый план',
+    'subscription.premium': '✨ Премиум план',
+    'subscription.cancel': '❌ Отменить подписку',
+    'subscription.success':
+      '✅ Ваша подписка на {plan} активирована!\nИстекает: {expiry}',
+    'subscription.error':
+      '❌ Произошла ошибка при обработке вашего платежа. Пожалуйста, попробуйте еще раз.',
+    'subscription.no_active': 'У вас нет активной подписки для отмены.',
+    'subscription.cancelled':
+      '✅ Ваша подписка была отменена, средства возвращены.',
+    'subscription.cancel_error':
+      '❌ Произошла ошибка при отмене подписки. Пожалуйста, попробуйте еще раз.',
+    'subscription.status': '💎 Статус подписки',
 
     // Diary messages
     'diary.activated':
@@ -235,37 +345,36 @@ const translations: Record<SupportedLanguage, Record<string, string>> = {
 
     // Document processing
     'document.file_not_found': '⚠️ Файл не найден.',
-    'document.user_not_identified':
-      '⚠️ Не удалось идентифицировать пользователя.',
+    'document.user_not_identified': '⚠️ Невозможно определить пользователя.',
     'document.file_too_large':
-      '📚 Файл слишком большой для обработки через Telegram Bot API (лимит 20MB).\n\nДля обработки больших файлов вы можете:\n1. Разделить PDF на несколько меньших файлов\n2. Уменьшить размер файла, сжав его\n3. Использовать локальную установку OCRmyPDF и скрипты из репозитория\n\n📏 Размер вашего файла: {size}',
+      '📚 Файл слишком большой для обработки через Telegram Bot API (ограничение 20МБ).\n\nДля обработки больших файлов вы можете:\n1. Разделить PDF на несколько файлов\n2. Уменьшить размер файла сжатием\n3. Использовать локальную установку OCRmyPDF и скрипты из репозитория\n\n📏 Размер вашего файла: {size}',
     'document.how_to_handle_large_files': 'Как работать с большими файлами',
-    'document.downloading': '📥 Загружаем файл...',
-    'document.analyzing': '🔍 Анализируем PDF и извлекаем текст...',
+    'document.downloading': '📥 Загрузка файла...',
+    'document.analyzing': '🔍 Анализ PDF и извлечение текста...',
     'document.extraction_failed': '⚠️ Не удалось извлечь текст даже после OCR.',
-    'document.extraction_success': '✅ Текст успешно извлечён!\n{method}',
-    'document.extraction_ocr': '🔎 Использован OCR для извлечения текста',
+    'document.extraction_success': '✅ Текст успешно извлечен!\n{method}',
+    'document.extraction_ocr': '🔎 Для извлечения текста использовался OCR',
     'document.extraction_direct': '📝 Текст извлечен напрямую',
     'document.text_analysis':
-      '📊 Анализ текста:\n\n📚 Всего страниц: {pages}\n🔤 Извлечено {tokens} токенов\n💰 Оценочная стоимость обработки: ${cost}\n\nХотите продолжить обработку?',
+      '📊 Анализ текста:\n\n📚 Всего страниц: {pages}\n🔤 Извлечено {tokens} токенов\n💰 Ориентировочная стоимость обработки: ${cost}\n\nХотите продолжить обработку?',
     'document.continue': '✅ Продолжить',
-    'document.cancel': '❌ Отменить',
+    'document.cancel': '❌ Отмена',
     'document.task_expired': 'Задача не найдена или устарела.',
     'document.processing_start': 'Начинаем обработку текста...',
-    'document.splitting_text': '⏳ Разделяем текст на части для обработки...',
+    'document.splitting_text': '⏳ Разделение текста на части для обработки...',
     'document.processing_chunk':
-      '⏳ Обрабатываем часть {current}/{total}...\nРазмер части: {count} токенов',
+      '⏳ Обработка части {current}/{total}...\nРазмер части: {count} токенов',
     'document.creating_deck': '⏳ Извлечено {count} слов. Создаем колоду...',
     'document.processing_complete':
-      '✅ Обработка завершена за {time} сек!\n📄 Обработано страниц: {pages}\n🔤 Извлечено слов: {words}\n📦 Колода готова к скачиванию.',
+      '✅ Обработка завершена за {time} сек!\n📄 Обработано страниц: {pages}\n🔤 Извлечено слов: {words}\n📦 Колода готова к загрузке.',
     'document.deck_ready':
       '🎯 Ваша колода Anki готова! Содержит {count} карточек.',
     'document.operation_cancelled': 'Операция отменена.',
     'document.operation_cancelled_message': '❌ Операция отменена.',
     'document.error_processing':
-      '❌ Произошла ошибка при обработке файла. Пожалуйста, попробуйте снова.',
+      '❌ Произошла ошибка при обработке файла. Пожалуйста, попробуйте еще раз.',
     'document.large_file_error':
-      '📚 Файл слишком большой для обработки через Telegram Bot API (лимит 20MB).\n\nПожалуйста, разделите файл на части меньше 20MB или используйте локальную установку.',
+      '📚 Файл слишком большой для обработки через Telegram Bot API (ограничение 20МБ).\n\nПожалуйста, разделите файл на части меньше 20МБ или используйте локальную установку.',
     'document.callback_error': 'Произошла ошибка при обработке запроса.'
   }
 };
@@ -296,4 +405,54 @@ export function t(
   }
 
   return translation;
+}
+
+/**
+ * Get subscription plan details with translations
+ * @param language - Language code
+ * @returns Subscription plan details
+ */
+export function getSubscriptionPlans(
+  language: SupportedLanguage
+): Record<
+  string,
+  { title: string; description: string; price: number; duration: number }
+> {
+  // Plan pricing and duration (same for all languages)
+  const oneMonthDuration = 30 * 24 * 60 * 60 * 1000; // 30 days in milliseconds
+
+  const plans = {
+    en: {
+      BASIC: {
+        title: 'Basic Plan',
+        description: 'Enhance your language learning with advanced features',
+        price: 50,
+        duration: oneMonthDuration
+      },
+      PREMIUM: {
+        title: 'Premium Plan',
+        description: 'Full access to all premium features and priority support',
+        price: 300, // 300 Stars (~$3.90)
+        duration: oneMonthDuration
+      }
+    },
+    ru: {
+      BASIC: {
+        title: 'Базовый план',
+        description:
+          'Расширьте возможности изучения языка с продвинутыми функциями',
+        price: 50,
+        duration: oneMonthDuration
+      },
+      PREMIUM: {
+        title: 'Премиум план',
+        description:
+          'Полный доступ ко всем премиум-функциям и приоритетная поддержка',
+        price: 300, // 300 Stars (~$3.90)
+        duration: oneMonthDuration
+      }
+    }
+  };
+
+  return plans[language] || plans.en;
 }

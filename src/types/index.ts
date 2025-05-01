@@ -39,6 +39,22 @@ export interface VocabularyEntry {
 }
 
 /**
+ * Subscription plan types
+ */
+export type SubscriptionPlan = 'free' | 'basic' | 'premium';
+
+/**
+ * Subscription status interface
+ */
+export interface SubscriptionStatus {
+  plan: SubscriptionPlan;
+  isActive: boolean;
+  expiresAt?: number;
+  paymentChargeId?: string;
+  features: string[];
+}
+
+/**
  * User state
  */
 export interface UserState {
@@ -51,6 +67,7 @@ export interface UserState {
   chatHistory: ChatMessage[];
   lastChatTimestamp?: number;
   vocabulary: VocabularyEntry[]; // User's personal vocabulary
+  subscription: SubscriptionStatus; // User subscription status
 }
 
 /**

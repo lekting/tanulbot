@@ -5,6 +5,7 @@ import * as dotenv from 'dotenv';
 import path from 'path';
 import ffmpegInstaller from '@ffmpeg-installer/ffmpeg';
 import * as fs from 'fs';
+import { getSubscriptionPlans } from '../services/i18n';
 
 // Load environment variables
 dotenv.config();
@@ -122,3 +123,6 @@ export const MAX_DICTATION_PHRASES = 5;
 // Chat history settings
 export const MAX_CHAT_HISTORY = 20; // Maximum number of messages to store per user
 export const CHAT_HISTORY_TOKENS = 800; // Maximum tokens to include in API requests
+
+// Export subscription plans
+export { getSubscriptionPlans };
