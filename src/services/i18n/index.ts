@@ -6,13 +6,45 @@ import { SubscriptionPlan } from '../../types';
 // Supported languages
 export type SupportedLanguage = 'en' | 'ru';
 
+// Supported learning languages
+export type SupportedLearningLanguage =
+  | 'hungarian'
+  | 'spanish'
+  | 'french'
+  | 'german'
+  | 'italian';
+
 export const CODE_TO_LANGUAGE: Record<SupportedLanguage, string> = {
   en: 'English',
   ru: 'Russian'
 };
 
-// Default language
+export const LEARNING_LANGUAGE_TO_NAME: Record<
+  SupportedLearningLanguage,
+  string
+> = {
+  hungarian: 'Hungarian',
+  spanish: 'Spanish',
+  french: 'French',
+  german: 'German',
+  italian: 'Italian'
+};
+
+// Default languages
 export const DEFAULT_LANGUAGE: SupportedLanguage = 'ru';
+export const DEFAULT_LEARNING_LANGUAGE: SupportedLearningLanguage = 'hungarian';
+
+// Language-specific characters for detection
+export const LANGUAGE_SPECIFIC_CHARS: Record<
+  SupportedLearningLanguage,
+  RegExp
+> = {
+  hungarian: /[áéíóöőúüű]/i,
+  spanish: /[áéíóúüñ¿¡]/i,
+  french: /[àâäæçéèêëîïôœùûüÿ]/i,
+  german: /[äöüß]/i,
+  italian: /[àèéìíîòóùú]/i
+};
 
 /**
  * Subscription features for each plan with translations
@@ -80,7 +112,8 @@ export const getSubscriptionFeatures = (
 const translations: Record<SupportedLanguage, Record<string, string>> = {
   en: {
     // Menu items
-    'menu.practice': '🗣 Practice Hungarian',
+    'menu.practice': '🗣 Practice {language}',
+    'menu.change_learning_language': '🔄 Change learning language',
     'menu.dictation.start': '✍️ Start dictation',
     'menu.dictation.stop': '🛑 Stop dictation',
     'menu.achievements': '🎯 My achievements',
@@ -90,6 +123,7 @@ const translations: Record<SupportedLanguage, Record<string, string>> = {
     'menu.anki': '🎴 Create Anki cards',
     'menu.language': '🌐 Change language',
     'menu.vocabulary': '📚 My vocabulary',
+    'menu.worksheets': '📝 Alphabet Worksheets',
 
     // Chat management
     'chat.clear': '🗑️ Clear chat history',
@@ -101,10 +135,21 @@ const translations: Record<SupportedLanguage, Record<string, string>> = {
     // Vocabulary
     'vocabulary.title': '📚 My vocabulary ({count} words)',
     'vocabulary.empty':
-      'Your vocabulary is empty. Words will be added as you practice Hungarian in conversations.',
+      'Your vocabulary is empty. Words will be added as you practice {language} in conversations.',
     'vocabulary.word_format': '{word} - {translation}',
     'vocabulary.word_added': '💡 New word added to your vocabulary!',
     'vocabulary.words_added': '💡 {count} new words added to your vocabulary!',
+
+    // Learning language
+    'learning_language.select': 'Please select a language to learn:',
+    'learning_language.changed': 'Learning language changed to {language}.',
+
+    // Language names
+    'language.hungarian': 'Hungarian',
+    'language.spanish': 'Spanish',
+    'language.french': 'French',
+    'language.german': 'German',
+    'language.italian': 'Italian',
 
     // Difficulty levels
     'difficulty.easy': '🟢 Easy',
@@ -147,7 +192,7 @@ const translations: Record<SupportedLanguage, Record<string, string>> = {
 
     // Diary messages
     'diary.activated':
-      'Diary mode activated! 📝\nWrite your text in Hungarian. If you don\'t know a word, write it in English in parentheses.\nExample: "Ma reggel (woke up) és (had breakfast)."\nWhen finished, press "🛑 Finish writing"',
+      'Diary mode activated! 📝\nWrite your text in {language}. If you don\'t know a word, write it in English in parentheses.\nExample: "Ma reggel (woke up) és (had breakfast)."\nWhen finished, press "🛑 Finish writing"',
     'diary.saved': 'Diary saved! Processing text...',
     'diary.processed':
       '📝 Your text has been processed:\n\nCorrected text:\n{text}\n\nImprovement suggestions:\n{suggestions}',
@@ -186,9 +231,9 @@ const translations: Record<SupportedLanguage, Record<string, string>> = {
 
     // Practice
     'practice.start':
-      "🇭🇺 Hello! I'm ready to chat with you in Hungarian. Just start writing in Hungarian, and I'll respond naturally. If you make mistakes, I'll gently help you learn. Jó beszélgetést! (Good conversation!)",
+      "Hello! I'm ready to chat with you in {language}. Just start writing in {language}, and I'll respond naturally. If you make mistakes, I'll gently help you learn.",
     'practice.fallback':
-      "I understand! Let's continue our conversation in Hungarian. Please try again?",
+      "I understand! Let's continue our conversation in {language}. Please try again?",
 
     // Language
     'language.select': 'Please select your preferred language:',
@@ -226,11 +271,38 @@ const translations: Record<SupportedLanguage, Record<string, string>> = {
       '❌ An error occurred while processing the file. Please try again.',
     'document.large_file_error':
       '📚 File is too large for processing via Telegram Bot API (20MB limit).\n\nPlease split the file into parts smaller than 20MB or use a local installation.',
-    'document.callback_error': 'An error occurred while processing the request.'
+    'document.callback_error':
+      'An error occurred while processing the request.',
+
+    // Worksheet related messages
+    'worksheet.select_type': 'Select worksheet type for {language}:',
+    'worksheet.select_case': 'Select letter case:',
+    'worksheet.select_size': 'Select font size:',
+    'worksheet.select_font_style': 'Select font style:',
+    'worksheet.generating': 'Generating worksheet... Please wait.',
+    'worksheet.generating_workbook':
+      'Generating complete alphabet workbook... Please wait.',
+    'worksheet.ready': 'Your {language} {type} worksheet is ready!',
+    'worksheet.workbook_ready': 'Your {language} alphabet workbook is ready!',
+    'worksheet.error': '❌ Error generating worksheet. Please try again.',
+    'worksheet.type.alphabet': '🔤 Full Alphabet',
+    'worksheet.type.vowels': '🔠 Vowels Only',
+    'worksheet.type.consonants': '📊 Consonants Only',
+    'worksheet.type.special': '📋 Special Characters',
+    'worksheet.type.full_workbook': '📚 Complete Workbook (all letters)',
+    'worksheet.case.uppercase': 'UPPERCASE',
+    'worksheet.case.lowercase': 'lowercase',
+    'worksheet.case.both': 'Both Aa',
+    'worksheet.size.small': 'Small',
+    'worksheet.size.medium': 'Medium',
+    'worksheet.size.large': 'Large',
+    'worksheet.style.cursive': '✍️ Cursive (Handwriting)',
+    'worksheet.style.print': '🔠 Print (Regular)'
   },
   ru: {
     // Menu items
-    'menu.practice': '🗣 Практиковать венгерский',
+    'menu.practice': '🗣 Практиковать {language}',
+    'menu.change_learning_language': '🔄 Изменить изучаемый язык',
     'menu.dictation.start': '✍️ Начать диктант',
     'menu.dictation.stop': '🛑 Остановить диктант',
     'menu.achievements': '🎯 Мои достижения',
@@ -240,6 +312,7 @@ const translations: Record<SupportedLanguage, Record<string, string>> = {
     'menu.anki': '🎴 Создать карточки Anki',
     'menu.language': '🌐 Изменить язык',
     'menu.vocabulary': '📚 Мой словарь',
+    'menu.worksheets': '📝 Прописи алфавита',
 
     // Chat management
     'chat.clear': '🗑️ Очистить историю',
@@ -251,10 +324,21 @@ const translations: Record<SupportedLanguage, Record<string, string>> = {
     // Vocabulary
     'vocabulary.title': '📚 Мой словарь ({count} слов)',
     'vocabulary.empty':
-      'Ваш словарь пуст. Слова будут добавляться по мере практики венгерского в разговорах.',
+      'Ваш словарь пуст. Слова будут добавляться по мере практики {language} в разговорах.',
     'vocabulary.word_format': '{word} - {translation}',
     'vocabulary.word_added': '💡 Новое слово добавлено в ваш словарь!',
     'vocabulary.words_added': '💡 {count} новых слов добавлено в ваш словарь!',
+
+    // Learning language
+    'learning_language.select': 'Пожалуйста, выберите язык для изучения:',
+    'learning_language.changed': 'Язык для изучения изменен на {language}.',
+
+    // Language names
+    'language.hungarian': 'венгерский',
+    'language.spanish': 'испанский',
+    'language.french': 'французский',
+    'language.german': 'немецкий',
+    'language.italian': 'итальянский',
 
     // Difficulty levels
     'difficulty.easy': '🟢 Легкий',
@@ -296,7 +380,7 @@ const translations: Record<SupportedLanguage, Record<string, string>> = {
 
     // Diary messages
     'diary.activated':
-      'Режим дневника активирован! 📝\nПишите текст на венгерском. Если вы не знаете слово, напишите его на русском в скобках.\nПример: "Ma reggel (проснулся) és (позавтракал)."\nКогда закончите, нажмите "🛑 Закончить запись"',
+      'Режим дневника активирован! 📝\nПишите текст на {language} языке. Если вы не знаете слово, напишите его на русском в скобках.\nПример: "Ma reggel (проснулся) és (позавтракал)."\nКогда закончите, нажмите "🛑 Закончить запись"',
     'diary.saved': 'Дневник сохранен! Обрабатываем текст...',
     'diary.processed':
       '📝 Ваш текст обработан:\n\nИсправленный текст:\n{text}\n\nПредложения по улучшению:\n{suggestions}',
@@ -335,38 +419,39 @@ const translations: Record<SupportedLanguage, Record<string, string>> = {
 
     // Practice
     'practice.start':
-      '🇭🇺 Привет! Я готов общаться с вами на венгерском. Просто начните писать на венгерском, и я буду естественно отвечать. Если вы допустите ошибки, я мягко помогу вам научиться. Jó beszélgetést! (Хорошего разговора!)',
+      'Привет! Я готов общаться с вами на {language} языке. Просто начните писать на {language}, и я буду отвечать естественно. Если вы сделаете ошибки, я мягко помогу вам учиться.',
     'practice.fallback':
-      'Я понимаю! Давайте продолжим наш разговор на венгерском. Попробуете еще раз?',
+      'Я понимаю! Давайте продолжим наш разговор на {language} языке. Попробуете еще раз?',
 
     // Language
-    'language.select': 'Пожалуйста, выберите предпочитаемый язык:',
+    'language.select': 'Пожалуйста, выберите ваш предпочитаемый язык:',
     'language.changed': 'Язык изменен на русский.',
 
     // Document processing
     'document.file_not_found': '⚠️ Файл не найден.',
-    'document.user_not_identified': '⚠️ Невозможно определить пользователя.',
+    'document.user_not_identified':
+      '⚠️ Не удалось идентифицировать пользователя.',
     'document.file_too_large':
-      '📚 Файл слишком большой для обработки через Telegram Bot API (ограничение 20МБ).\n\nДля обработки больших файлов вы можете:\n1. Разделить PDF на несколько файлов\n2. Уменьшить размер файла сжатием\n3. Использовать локальную установку OCRmyPDF и скрипты из репозитория\n\n📏 Размер вашего файла: {size}',
+      '📚 Файл слишком большой для обработки через Telegram Bot API (ограничение 20MB).\n\nЧтобы обработать большие файлы, вы можете:\n1. Разделить PDF на меньшие файлы\n2. Уменьшить размер файла, сжав его\n3. Использовать локальную установку OCRmyPDF и скрипты из репозитория\n\n📏 Размер вашего файла: {size}',
     'document.how_to_handle_large_files': 'Как работать с большими файлами',
-    'document.downloading': '📥 Загрузка файла...',
+    'document.downloading': '📥 Скачивание файла...',
     'document.analyzing': '🔍 Анализ PDF и извлечение текста...',
     'document.extraction_failed': '⚠️ Не удалось извлечь текст даже после OCR.',
     'document.extraction_success': '✅ Текст успешно извлечен!\n{method}',
-    'document.extraction_ocr': '🔎 Для извлечения текста использовался OCR',
+    'document.extraction_ocr': '🔎 Текст извлечен с помощью OCR',
     'document.extraction_direct': '📝 Текст извлечен напрямую',
     'document.text_analysis':
-      '📊 Анализ текста:\n\n📚 Всего страниц: {pages}\n🔤 Извлечено {tokens} токенов\n💰 Ориентировочная стоимость обработки: ${cost}\n\nХотите продолжить обработку?',
+      '📊 Анализ текста:\n\n📚 Всего страниц: {pages}\n🔤 Извлечено {tokens} токенов\n💰 Оценка стоимости обработки: ${cost}\n\nХотите ли вы продолжить обработку?',
     'document.continue': '✅ Продолжить',
-    'document.cancel': '❌ Отмена',
-    'document.task_expired': 'Задача не найдена или устарела.',
-    'document.processing_start': 'Начинаем обработку текста...',
+    'document.cancel': '❌ Отменить',
+    'document.task_expired': 'Задача не найдена или истекла.',
+    'document.processing_start': 'Начало обработки текста...',
     'document.splitting_text': '⏳ Разделение текста на части для обработки...',
     'document.processing_chunk':
       '⏳ Обработка части {current}/{total}...\nРазмер части: {count} токенов',
     'document.creating_deck': '⏳ Извлечено {count} слов. Создаем колоду...',
     'document.processing_complete':
-      '✅ Обработка завершена за {time} сек!\n📄 Обработано страниц: {pages}\n🔤 Извлечено слов: {words}\n📦 Колода готова к загрузке.',
+      '✅ Обработка завершена за {time} сек!\n📄 Обработано страниц: {pages}\n🔤 Извлечено слов: {words}\n📦 Колода готова для загрузки.',
     'document.deck_ready':
       '🎯 Ваша колода Anki готова! Содержит {count} карточек.',
     'document.operation_cancelled': 'Операция отменена.',
@@ -374,8 +459,34 @@ const translations: Record<SupportedLanguage, Record<string, string>> = {
     'document.error_processing':
       '❌ Произошла ошибка при обработке файла. Пожалуйста, попробуйте еще раз.',
     'document.large_file_error':
-      '📚 Файл слишком большой для обработки через Telegram Bot API (ограничение 20МБ).\n\nПожалуйста, разделите файл на части меньше 20МБ или используйте локальную установку.',
-    'document.callback_error': 'Произошла ошибка при обработке запроса.'
+      '📚 Файл слишком большой для обработки через Telegram Bot API (ограничение 20MB).\n\nПожалуйста, разделите файл на части меньше 20MB или используйте локальную установку.',
+    'document.callback_error': 'Произошла ошибка при обработке запроса.',
+
+    // Worksheet related messages
+    'worksheet.select_type': 'Выберите тип прописей для {language}:',
+    'worksheet.select_case': 'Выберите регистр букв:',
+    'worksheet.select_size': 'Выберите размер шрифта:',
+    'worksheet.select_font_style': 'Выберите стиль шрифта:',
+    'worksheet.generating': 'Создаю прописи... Пожалуйста, подождите.',
+    'worksheet.generating_workbook':
+      'Создаю полную тетрадь алфавита... Пожалуйста, подождите.',
+    'worksheet.ready': 'Ваши прописи {type} для {language} готовы!',
+    'worksheet.workbook_ready': 'Ваша тетрадь алфавита для {language} готова!',
+    'worksheet.error':
+      '❌ Ошибка при создании прописей. Пожалуйста, попробуйте снова.',
+    'worksheet.type.alphabet': '🔤 Весь алфавит',
+    'worksheet.type.vowels': '🔠 Только гласные',
+    'worksheet.type.consonants': '📊 Только согласные',
+    'worksheet.type.special': '📋 Специальные символы',
+    'worksheet.type.full_workbook': '📚 Полная тетрадь (все буквы)',
+    'worksheet.case.uppercase': 'ЗАГЛАВНЫЕ',
+    'worksheet.case.lowercase': 'строчные',
+    'worksheet.case.both': 'Оба варианта Аа',
+    'worksheet.size.small': 'Маленький',
+    'worksheet.size.medium': 'Средний',
+    'worksheet.size.large': 'Большой',
+    'worksheet.style.cursive': '✍️ Прописью (От руки)',
+    'worksheet.style.print': '🔠 Печатный (Обычный)'
   }
 };
 

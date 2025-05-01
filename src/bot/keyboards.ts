@@ -2,13 +2,19 @@
  * Telegram bot keyboards
  */
 import { Keyboard } from 'grammy';
-import { SupportedLanguage, t } from '../services/i18n';
+import {
+  SupportedLanguage,
+  t,
+  DEFAULT_LEARNING_LANGUAGE,
+  SupportedLearningLanguage
+} from '../services/i18n';
 
 /**
  * Available keyboard action identifiers
  */
 export const KEYBOARD_IDS = {
-  PRACTICE_HUNGARIAN: 'menu.practice',
+  PRACTICE_LANGUAGE: 'menu.practice',
+  CHANGE_LEARNING_LANGUAGE: 'menu.change_learning_language',
   START_DICTATION: 'menu.dictation.start',
   STOP_DICTATION: 'menu.dictation.stop',
   MY_ACHIEVEMENTS: 'menu.achievements',
@@ -26,6 +32,7 @@ export const KEYBOARD_IDS = {
   CLEAR_CHAT: 'chat.clear',
   VIEW_CHAT: 'chat.view',
   VIEW_VOCABULARY: 'menu.vocabulary',
+  WORKSHEETS: 'menu.worksheets',
   DICTATION_TYPE_WORDS: 'dictation.type.words',
   DICTATION_TYPE_PHRASES: 'dictation.type.phrases',
   DICTATION_TYPE_STORIES: 'dictation.type.stories',
@@ -42,14 +49,22 @@ export const KEYBOARD_IDS = {
 /**
  * Get localized keyboard actions
  * @param language - User language
+ * @param learningLanguage - User's selected learning language
  * @returns Dictionary of localized keyboard actions
  */
 export function getKeyboardActions(
-  language: SupportedLanguage
+  language: SupportedLanguage,
+  learningLanguage: SupportedLearningLanguage = DEFAULT_LEARNING_LANGUAGE
 ): Record<string, string> {
   return Object.entries(KEYBOARD_IDS).reduce(
     (actions, [key, translationKey]) => {
-      actions[key] = t(translationKey, language);
+      // Special case for PRACTICE_LANGUAGE to include the language name
+      if (key === 'PRACTICE_LANGUAGE') {
+        const langName = t(`language.${learningLanguage}`, language);
+        actions[key] = t(translationKey, language, { language: langName });
+      } else {
+        actions[key] = t(translationKey, language);
+      }
       return actions;
     },
     {} as Record<string, string>
@@ -59,17 +74,23 @@ export function getKeyboardActions(
 /**
  * Create main menu keyboard
  * @param language - User language
+ * @param learningLanguage - User's selected learning language
  */
-export function createMainMenu(language: SupportedLanguage): Keyboard {
-  const actions = getKeyboardActions(language);
+export function createMainMenu(
+  language: SupportedLanguage,
+  learningLanguage: SupportedLearningLanguage = DEFAULT_LEARNING_LANGUAGE
+): Keyboard {
+  const actions = getKeyboardActions(language, learningLanguage);
 
   return new Keyboard()
-    .text(actions.PRACTICE_HUNGARIAN)
+    .text(actions.PRACTICE_LANGUAGE)
     .row()
     .text(actions.START_DICTATION)
     .row()
     .text(actions.WRITE_DIARY)
     .text(actions.GENERATE_ANKI)
+    .row()
+    .text(actions.WORKSHEETS)
     .row()
     .text(actions.MY_ACHIEVEMENTS)
     .text(actions.VIEW_VOCABULARY)
@@ -79,7 +100,25 @@ export function createMainMenu(language: SupportedLanguage): Keyboard {
     .row()
     .text(actions.SUBSCRIPTION_STATUS)
     .row()
+    .text(actions.CHANGE_LEARNING_LANGUAGE)
     .text(`🌐 ${language.toUpperCase()}`)
+    .resized();
+}
+
+/**
+ * Create learning language selection keyboard
+ */
+export function createLearningLanguageMenu(): Keyboard {
+  return new Keyboard()
+    .text('🇭🇺 Hungarian')
+    .text('🇪🇸 Spanish')
+    .row()
+    .text('🇫🇷 French')
+    .text('🇩🇪 German')
+    .row()
+    .text('🇮🇹 Italian')
+    .row()
+    .text(t('menu.back'))
     .resized();
 }
 

@@ -1,7 +1,7 @@
 /**
  * Type definitions for the application
  */
-import { SupportedLanguage } from '../services/i18n';
+import { SupportedLanguage, SupportedLearningLanguage } from '../services/i18n';
 
 export type DictationDifficulty = 'easy' | 'medium' | 'hard';
 export type DictationFormat = 'words' | 'phrases' | 'stories';
@@ -30,7 +30,7 @@ export interface ChatMessage {
  * User vocabulary word entry
  */
 export interface VocabularyEntry {
-  word: string; // Hungarian word
+  word: string; // Word in learning language
   translation: string; // Translation to user's language
   context?: string; // Example sentence or context where the word was used
   addedDate: number; // Timestamp when the word was added
@@ -61,6 +61,7 @@ export interface UserState {
   isActive: boolean;
   points: number;
   language: SupportedLanguage;
+  learningLanguage: SupportedLearningLanguage;
   isDiaryMode: boolean;
   diaryEntries: DiaryEntry[];
   processedDiaryEntries: ProcessedDiaryEntry[];
@@ -74,8 +75,8 @@ export interface UserState {
  * Structure for vocabulary word pairs
  */
 export interface WordPair {
-  front: string; // Hungarian word
-  back: string; // Russian translation
+  front: string; // Word in learning language
+  back: string; // Translation to user's native language
 }
 
 /**

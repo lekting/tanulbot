@@ -1,5 +1,6 @@
 /**
- * Central export for all handlers
+ * Export all handlers
  */
-export { handleDocumentUpload, handleDocumentCallback } from './documentHandler';
-export { handleTextMessage } from './messageHandler'; 
+export * from './messageHandler';
+export * from './documentHandler';
+export * from './worksheetHandler';

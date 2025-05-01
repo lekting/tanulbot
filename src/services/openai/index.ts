@@ -1,24 +1,50 @@
 /**
  * OpenAI service configuration and common functionality
  */
-import { OpenAI } from 'openai';
-import * as fs from 'fs/promises';
-import { OPENAI_API_KEY, OPENROUTER_API_KEY } from '../../config';
-import { OpenAIVoice, DictationDifficulty } from '../../types';
-import { CODE_TO_LANGUAGE, SupportedLanguage, t } from '../i18n';
+import OpenAI from 'openai';
+import { promises as fs } from 'fs';
 
-// Initialize OpenAI client
-const openai = new OpenAI({ apiKey: OPENAI_API_KEY });
+import {
+  OPENAI_API_KEY,
+  MAX_CHUNK_TOKENS,
+  OPENROUTER_API_KEY
+} from '../../config';
+import { OpenAIVoice, DictationDifficulty } from '../../types';
+import {
+  CODE_TO_LANGUAGE,
+  SupportedLanguage,
+  SupportedLearningLanguage,
+  LEARNING_LANGUAGE_TO_NAME,
+  t
+} from '../i18n';
+
+// Helper function to truncate text based on token count (simple estimate)
+function truncateText(text: string, maxTokens: number): string {
+  // Simple token estimation (4 chars ≈ 1 token)
+  const tokenEstimate = Math.ceil(text.length / 4);
+  if (tokenEstimate <= maxTokens) return text;
+
+  // If text is too long, truncate it
+  const charsToKeep = maxTokens * 4;
+  return text.slice(0, charsToKeep);
+}
+
+// OpenAI client setup
+const openai = new OpenAI({
+  apiKey: OPENAI_API_KEY
+});
+
 const openrouter = new OpenAI({
   apiKey: OPENROUTER_API_KEY,
   baseURL: 'https://openrouter.ai/api/v1'
 });
 
-// Model configurations
+// OpenAI model configuration
 export const MODELS = {
   CHAT: 'google/gemini-2.0-flash-001',
-  TTS: 'gpt-4o-mini-tts'
-} as const;
+  TTS: 'gpt-4o-mini-tts',
+  WHISPER: 'whisper-1'
+};
 
 /**
  * Base function for making chat completions
@@ -40,163 +66,136 @@ export async function chatCompletion(
 }
 
 /**
- * Interact with the user in Hungarian, providing gentle corrections if needed
- * @param userText - Input text from user
- * @param language - User's preferred language for explanations
- * @param chatHistory - Previous chat messages
- * @param maxHistoryTokens - Maximum number of tokens to use from history
- * @returns A conversational reply with gentle corrections if needed
+ * Interacts with the user in the learning language providing corrections
  */
 export async function correctAndReply(
   userText: string,
   language: SupportedLanguage = 'ru',
   chatHistory: { role: 'user' | 'assistant'; content: string }[] = [],
-  maxHistoryTokens: number = 800
+  maxHistoryTokens: number = 800,
+  learningLanguage: SupportedLearningLanguage = 'hungarian'
 ): Promise<string> {
-  // Create system message focused on natural conversation
-  const systemMessage = `
-You are a fluent Hungarian speaker chatting with a language learner. Act like a friendly, helpful native speaker, not a teacher.
+  const languageName = LEARNING_LANGUAGE_TO_NAME[learningLanguage];
 
-Style guide:
-- Respond primarily in simple Hungarian, making the conversation feel natural
-- If the user makes a minor mistake, subtly use the correct form in your response without explicitly pointing it out
-- For major mistakes that impact meaning, gently offer a correction in ${CODE_TO_LANGUAGE[language]} in parentheses 
-- Include some follow-up questions to keep the conversation flowing
-- Occasionally suggest a new word or phrase to expand their vocabulary
-- Keep your responses conversational and brief (1-3 sentences in Hungarian)
+  try {
+    // Prepare system message with instructions
+    const systemMessage = `
+You are a fluent ${languageName} speaker chatting with a language learner. Act like a friendly, helpful native speaker, not a teacher.
 
-Remember: you're having a real conversation, not giving a language lesson. Your goal is to help them practice naturally.
+Guidelines:
+- Respond primarily in simple ${languageName}, making the conversation feel natural
+- If the user makes grammar or vocabulary mistakes, correct them subtly in your response
+- For major errors, you can provide a brief explanation in ${CODE_TO_LANGUAGE[language]}
+- Keep your responses conversational and brief (1-3 sentences in ${languageName})
+- Adapt to the user's language level - use simple constructions if they're a beginner
+- Respond to the content of the user's message
+- Never refuse to respond in ${languageName} - the user needs practice
 `;
 
-  // Create messages array with system message
-  const messages = [{ role: 'system', content: systemMessage }];
+    // Prepare messages for the API call
+    const historyMessages = chatHistory.map((msg) => ({
+      role: msg.role,
+      content: msg.content
+    }));
 
-  // Add recent chat history if available
-  if (chatHistory.length > 0) {
-    // Limit history based on token count
-    let tokenCount = 0;
-    const relevantHistory = [];
+    // Add the current user message
+    const messages = [
+      { role: 'system', content: systemMessage },
+      ...historyMessages,
+      { role: 'user', content: userText }
+    ] as { role: 'system' | 'user' | 'assistant'; content: string }[];
 
-    // Process messages in reverse order to include most relevant messages
-    for (let i = chatHistory.length - 1; i >= 0; i--) {
-      const message = chatHistory[i];
-      const messageTokens = Math.ceil(message.content.length / 4);
-
-      if (tokenCount + messageTokens <= maxHistoryTokens) {
-        relevantHistory.unshift(message); // Add to beginning to maintain order
-        tokenCount += messageTokens;
-      } else {
-        break;
-      }
-    }
-
-    // Add relevant history to messages
-    messages.push(...relevantHistory);
-  }
-
-  // Add the current user message
-  messages.push({ role: 'user', content: userText });
-
-  // Create completion with conversation context
-  try {
-    const completion = await openrouter.chat.completions.create({
+    // Call the OpenAI API
+    const response = await openrouter.chat.completions.create({
       model: MODELS.CHAT,
-      messages: messages as any,
-      temperature: 0.7 // Higher temperature for more natural responses
+      messages,
+      temperature: 0.7,
+      max_tokens: MAX_CHUNK_TOKENS,
+      presence_penalty: 0.6
     });
 
-    return completion.choices[0]?.message?.content ?? '';
+    return response.choices[0].message.content || '';
   } catch (error) {
     console.error('Error in conversation API call:', error);
-
     // Provide fallback response if API call fails
     return t('practice.fallback', language);
   }
 }
 
 /**
- * Interact with the user in Hungarian and extract corrected words as JSON
- * @param userText - Input text from user
- * @param language - User's preferred language for explanations
- * @param chatHistory - Previous chat messages
- * @param maxHistoryTokens - Maximum number of tokens to use from history
- * @returns A JSON object with conversational reply and extracted word pairs
+ * Interacts with the user in the learning language and extracts corrected words as JSON
  */
 export async function correctAndReplyWithWords(
   userText: string,
   language: SupportedLanguage = 'ru',
   chatHistory: { role: 'user' | 'assistant'; content: string }[] = [],
-  maxHistoryTokens: number = 800
+  maxHistoryTokens: number = 800,
+  learningLanguage: SupportedLearningLanguage = 'hungarian'
 ): Promise<{ text: string; words: { front: string; back: string }[] }> {
-  // Create system message focused on natural conversation and word extraction
-  const systemMessage = `
-You are a fluent Hungarian speaker chatting with a language learner. Act like a friendly, helpful native speaker, not a teacher.
+  const languageName = LEARNING_LANGUAGE_TO_NAME[learningLanguage];
 
-Style guide:
-- Respond primarily in simple Hungarian, making the conversation feel natural
-- If the user makes a minor mistake, subtly use the correct form in your response without explicitly pointing it out
-- For major mistakes that impact meaning, gently offer a correction in ${CODE_TO_LANGUAGE[language]} in parentheses 
-- Include some follow-up questions to keep the conversation flowing
-- Occasionally suggest a new word or phrase to expand their vocabulary
-- Keep your responses conversational and brief (1-3 sentences in Hungarian)
+  try {
+    // Prepare system message with instructions
+    const systemMessage = `
+You are a fluent ${languageName} speaker chatting with a language learner. Act like a friendly, helpful native speaker, not a teacher.
 
-IMPORTANT: Your response MUST be in JSON format with two fields:
-1. "text" - Your conversational reply that will be sent to the user
-2. "words" - An array of objects with "front" (Hungarian word) and "back" (${CODE_TO_LANGUAGE[language]} translation) for any words that:
-   - Were corrected or taught in this conversation
-   - Are important for the user to remember
-   - Maximum 3-5 words per conversation
+Guidelines:
+- Respond primarily in simple ${languageName}, making the conversation feel natural
+- If the user makes grammar or vocabulary mistakes, correct them subtly in your response
+- For major errors, you can provide a brief explanation in ${CODE_TO_LANGUAGE[language]}
+- Keep your responses conversational and brief (1-3 sentences in ${languageName})
+- Adapt to the user's language level - use simple constructions if they're a beginner
 
-Remember: your goal is to have a natural conversation while helping them build vocabulary.
+IMPORTANT: Your response must be valid JSON with these keys:
+1. "text" - Your conversational response in ${languageName}
+2. "words" - An array of objects with "front" (${languageName} word) and "back" (${CODE_TO_LANGUAGE[language]} translation) for any words that:
+   - The user might not know
+   - Are important for understanding your response
+   - Were used incorrectly by the user (in this case include the correct version)
+
+Example response format:
+{
+  "text": "Your conversational response here",
+  "words": [
+    {"front": "${languageName} word", "back": "${CODE_TO_LANGUAGE[language]} translation"},
+    {"front": "another word", "back": "translation"}
+  ]
+}
 `;
 
-  // Create messages array with system message
-  const messages = [{ role: 'system', content: systemMessage }];
+    // Prepare messages for the API call
+    const historyMessages = chatHistory.map((msg) => ({
+      role: msg.role,
+      content: msg.content
+    }));
 
-  // Add recent chat history if available
-  if (chatHistory.length > 0) {
-    // Limit history based on token count
-    let tokenCount = 0;
-    const relevantHistory = [];
+    // Truncate history to avoid token limit
+    const truncatedHistory = truncateText(
+      JSON.stringify(historyMessages),
+      maxHistoryTokens
+    );
+    const parsedHistory = JSON.parse(truncatedHistory);
 
-    // Process messages in reverse order to include most relevant messages
-    for (let i = chatHistory.length - 1; i >= 0; i--) {
-      const message = chatHistory[i];
-      const messageTokens = Math.ceil(message.content.length / 4);
+    // Add the current user message
+    const messages = [
+      { role: 'system', content: systemMessage },
+      ...parsedHistory,
+      { role: 'user', content: userText }
+    ] as { role: 'system' | 'user' | 'assistant'; content: string }[];
 
-      if (tokenCount + messageTokens <= maxHistoryTokens) {
-        relevantHistory.unshift(message); // Add to beginning to maintain order
-        tokenCount += messageTokens;
-      } else {
-        break;
-      }
-    }
-
-    // Add relevant history to messages
-    messages.push(...relevantHistory);
-  }
-
-  // Add the current user message
-  messages.push({ role: 'user', content: userText });
-
-  // Create completion with conversation context
-  try {
-    const completion = await openrouter.chat.completions.create({
+    // Call the OpenAI API
+    const response = await openrouter.chat.completions.create({
       model: MODELS.CHAT,
-      messages: messages as any,
-      temperature: 0.7, // Higher temperature for more natural responses
+      messages,
+      temperature: 0.7,
+      max_tokens: MAX_CHUNK_TOKENS,
       response_format: { type: 'json_object' }
     });
 
-    const content = completion.choices[0]?.message?.content ?? '{}';
+    const content = response.choices[0].message.content || '';
 
     try {
-      const response = JSON.parse(extractJsonContent(content)) as {
-        text: string;
-        words: { front: string; back: string }[];
-      };
-
-      // Ensure the response has the expected structure
+      const response = JSON.parse(content);
       return {
         text: response.text || '',
         words: Array.isArray(response.words) ? response.words : []
@@ -243,20 +242,27 @@ export async function synthesizeSpeech(
 }
 
 /**
- * Processes text to extract Hungarian-Russian word pairs
+ * Processes text to extract word pairs between learning language and user language
  * @param fullText - Text to process
+ * @param learningLanguage - The language being learned
+ * @param userLanguage - The user's native language
  * @returns Array of word pairs
  */
 export async function extractWordPairs(
-  fullText: string
+  fullText: string,
+  learningLanguage: SupportedLearningLanguage = 'hungarian',
+  userLanguage: SupportedLanguage = 'ru'
 ): Promise<{ front: string; back: string }[]> {
+  const learningLanguageName = LEARNING_LANGUAGE_TO_NAME[learningLanguage];
+  const userLanguageName = CODE_TO_LANGUAGE[userLanguage];
+
   const prompt = `
-You are a bilingual assistant fluent in Hungarian and Russian.
-Extract unique Hungarian words and their Russian translations.
-Format: "Hungarian word - Russian translation" per line.
-FIRST WORD IS HUNGARIAN, SECOND IS RUSSIAN.
+You are a bilingual assistant fluent in ${learningLanguageName} and ${userLanguageName}.
+Extract unique ${learningLanguageName} words and their ${userLanguageName} translations.
+Format: "${learningLanguageName} word - ${userLanguageName} translation" per line.
+FIRST WORD IS ${learningLanguageName.toUpperCase()}, SECOND IS ${userLanguageName.toUpperCase()}.
 Focus on everyday useful words. If words have errors, fix them.
-Dont extract only letters or abbreviations.
+Don't extract only letters or abbreviations.
 EXTRACT ALL POSSIBLE PAIRS.
 Text:
 """
@@ -284,17 +290,21 @@ ${fullText}
 }
 
 /**
- * Generates Hungarian phrases for dictation
+ * Generates phrases for dictation in the learning language
+ * @param language - The learning language
  * @param difficulty - Difficulty level
  * @param count - Number of phrases to generate
  * @param wordsOnly - Whether to generate single words instead of phrases
- * @returns Array of Hungarian phrases or words
+ * @returns Array of phrases or words in the learning language
  */
-export async function generateHungarianPhrases(
+export async function generatePhrases(
+  language: SupportedLearningLanguage,
   difficulty: DictationDifficulty,
   count: number,
   wordsOnly: boolean = false
 ): Promise<string[]> {
+  const languageName = LEARNING_LANGUAGE_TO_NAME[language];
+
   const difficultyDescriptions = {
     easy: 'simple greetings, basic phrases of 1-3 words, numbers, days of the week',
     medium:
@@ -303,10 +313,9 @@ export async function generateHungarianPhrases(
   };
 
   const wordDifficultyDescriptions = {
-    easy: 'most basic Hungarian words (numbers, colors, days of the week, greetings)',
-    medium:
-      'everyday words of medium difficulty (food, transportation, work, leisure)',
-    hard: 'complex words (abstract concepts, professional terms, rarely used words)'
+    easy: `most basic ${languageName} words (numbers, colors, days of the week, greetings)`,
+    medium: `everyday words of medium difficulty (food, transportation, work, leisure)`,
+    hard: `complex words (abstract concepts, professional terms, rarely used words)`
   };
 
   const description = wordsOnly
@@ -315,18 +324,18 @@ export async function generateHungarianPhrases(
   const contentType = wordsOnly ? 'words' : 'phrases';
 
   const prompt = `
-Generate ${count} unique Hungarian ${contentType} for language learning.
+Generate ${count} unique ${languageName} ${contentType} for language learning.
 Difficulty level: ${difficulty} (${description[difficulty]})
 
 Requirements:
 ${
   wordsOnly
     ? `
-- Each item should be a single Hungarian word
+- Each item should be a single ${languageName} word
 - Include common, practical words
 - Match the difficulty level
 - No phrases or sentences, only individual words
-- No translations, only Hungarian text
+- No translations, only ${languageName} text
 - Each word on a new line
 `
     : `
@@ -337,7 +346,7 @@ ${
 - For medium level: 3-5 words
 - For hard level: 5-8 words
 - Include variety of topics (greetings, questions, statements)
-- No translations, only Hungarian text
+- No translations, only ${languageName} text
 - Each phrase on a new line
 `
 }
@@ -354,13 +363,17 @@ ${contentType.charAt(0).toUpperCase() + contentType.slice(1)}:`;
 }
 
 /**
- * Generates a Hungarian story for dictation
+ * Generates a story for dictation in the learning language
+ * @param language - The learning language
  * @param difficulty - Difficulty level
  * @returns Array of story sentences
  */
-export async function generateHungarianStory(
+export async function generateStory(
+  language: SupportedLearningLanguage,
   difficulty: DictationDifficulty
 ): Promise<string[]> {
+  const languageName = LEARNING_LANGUAGE_TO_NAME[language];
+
   const difficultyDescriptions = {
     easy: 'simple story with 3-4 short sentences, basic grammar, present tense',
     medium:
@@ -369,7 +382,7 @@ export async function generateHungarianStory(
   };
 
   const prompt = `
-Generate a short Hungarian story for language learning.
+Generate a short ${languageName} story for language learning.
 Difficulty level: ${difficulty} (${difficultyDescriptions[difficulty]})
 
 Requirements:
@@ -381,7 +394,7 @@ Requirements:
   * Hard: 5-6 complex sentences, mixed tenses, complex grammar
 - Use common vocabulary
 - Include some dialogue if appropriate
-- No translations, only Hungarian text
+- No translations, only ${languageName} text
 
 Story:`;
 
@@ -393,44 +406,12 @@ Story:`;
     .filter((line) => line.length > 0);
 }
 
-/**
- * Base function for making chat completions with JSON response format
- * @param prompt - Prompt text
- * @param temperature - Temperature for response generation (0-1)
- * @returns Generated text in JSON format
- */
-export async function jsonChatCompletion<T = any>(
-  prompt: string,
-  temperature: number = 0.7
-): Promise<T> {
-  const completion = await openrouter.chat.completions.create({
-    model: MODELS.CHAT,
-    messages: [{ role: 'user', content: prompt }],
-    temperature,
-    response_format: { type: 'json_object' }
-  });
+// For backward compatibility
+export const generateHungarianPhrases = (
+  difficulty: DictationDifficulty,
+  count: number,
+  wordsOnly: boolean = false
+) => generatePhrases('hungarian', difficulty, count, wordsOnly);
 
-  const content = completion.choices[0]?.message?.content || '{}';
-
-  try {
-    return JSON.parse(extractJsonContent(content)) as T;
-  } catch (error) {
-    console.error('Failed to parse JSON response:', error);
-    throw new Error('Invalid JSON response from API');
-  }
-}
-
-export const extractJsonContent = (text: string) => {
-  if (!text) {
-    return '';
-  }
-
-  const regex = /```json\s*([\s\S]*?)\s*```/;
-  const match = text.match(regex);
-
-  if (match && match[1]) {
-    return match[1].trim();
-  }
-
-  return text;
-};
+export const generateHungarianStory = (difficulty: DictationDifficulty) =>
+  generateStory('hungarian', difficulty);

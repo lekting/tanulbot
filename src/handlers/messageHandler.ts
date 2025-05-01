@@ -7,7 +7,8 @@ import {
   createLanguageMenu,
   createDictationMenu,
   createDictationTypeMenu,
-  createSubscriptionMenu
+  createSubscriptionMenu,
+  createLearningLanguageMenu
 } from '../bot/keyboards';
 import { correctAndReplyWithWords } from '../services/openai/index';
 import { generateDictationPhrasesByDifficulty } from '../services/dictation';
@@ -28,6 +29,7 @@ import {
   cancelSubscription,
   getSubscriptionStatus
 } from '../services/subscription';
+import { handleWorksheetMenu } from './worksheetHandler';
 
 /**
  * Handle text messages from users
@@ -42,13 +44,14 @@ export async function handleTextMessage(ctx: Context): Promise<void> {
 
   // Get user's language preference
   const userLang = store.getUserLanguage(userId);
+  const learningLang = store.getUserLearningLanguage(userId);
   const actions = getKeyboardActions(userLang);
 
   // Handle language selection
   if (messageText === '🇬🇧 English') {
     store.setUserLanguage(userId, 'en');
     await ctx.reply(t('language.changed', 'en'), {
-      reply_markup: createMainMenu('en')
+      reply_markup: createMainMenu('en', learningLang)
     });
     return;
   }
@@ -56,7 +59,7 @@ export async function handleTextMessage(ctx: Context): Promise<void> {
   if (messageText === '🇷🇺 Русский') {
     store.setUserLanguage(userId, 'ru');
     await ctx.reply(t('language.changed', 'ru'), {
-      reply_markup: createMainMenu('ru')
+      reply_markup: createMainMenu('ru', learningLang)
     });
     return;
   }
@@ -65,6 +68,70 @@ export async function handleTextMessage(ctx: Context): Promise<void> {
   if (messageText === `🌐 ${userLang.toUpperCase()}`) {
     await ctx.reply(t('language.select', userLang), {
       reply_markup: createLanguageMenu()
+    });
+    return;
+  }
+
+  // Handle learning language selection
+  if (messageText.startsWith('🇭🇺') || messageText === 'Hungarian') {
+    store.setUserLearningLanguage(userId, 'hungarian');
+    await ctx.reply(
+      t('learning_language.changed', userLang, { language: 'Hungarian' }),
+      {
+        reply_markup: createMainMenu(userLang, 'hungarian')
+      }
+    );
+    return;
+  }
+
+  if (messageText.startsWith('🇪🇸') || messageText === 'Spanish') {
+    store.setUserLearningLanguage(userId, 'spanish');
+    await ctx.reply(
+      t('learning_language.changed', userLang, { language: 'Spanish' }),
+      {
+        reply_markup: createMainMenu(userLang, 'spanish')
+      }
+    );
+    return;
+  }
+
+  if (messageText.startsWith('🇫🇷') || messageText === 'French') {
+    store.setUserLearningLanguage(userId, 'french');
+    await ctx.reply(
+      t('learning_language.changed', userLang, { language: 'French' }),
+      {
+        reply_markup: createMainMenu(userLang, 'french')
+      }
+    );
+    return;
+  }
+
+  if (messageText.startsWith('🇩🇪') || messageText === 'German') {
+    store.setUserLearningLanguage(userId, 'german');
+    await ctx.reply(
+      t('learning_language.changed', userLang, { language: 'German' }),
+      {
+        reply_markup: createMainMenu(userLang, 'german')
+      }
+    );
+    return;
+  }
+
+  if (messageText.startsWith('🇮🇹') || messageText === 'Italian') {
+    store.setUserLearningLanguage(userId, 'italian');
+    await ctx.reply(
+      t('learning_language.changed', userLang, { language: 'Italian' }),
+      {
+        reply_markup: createMainMenu(userLang, 'italian')
+      }
+    );
+    return;
+  }
+
+  // Handle learning language menu request
+  if (messageText === actions.CHANGE_LEARNING_LANGUAGE) {
+    await ctx.reply(t('learning_language.select', userLang), {
+      reply_markup: createLearningLanguageMenu()
     });
     return;
   }
@@ -246,12 +313,14 @@ export async function handleTextMessage(ctx: Context): Promise<void> {
   }
 
   // Check for keyboard actions
-  if (messageText === actions.PRACTICE_HUNGARIAN) {
+  if (messageText === actions.PRACTICE_LANGUAGE) {
     store.setUserActive(userId);
     store.clearUserChatHistory(userId); // Start with a clean conversation
 
     // Add system welcome message to the history as an assistant message
-    const welcomeMessage = t('practice.start', userLang);
+    const welcomeMessage = t('practice.start', userLang, {
+      language: t(`language.${learningLang}`, userLang)
+    });
     store.addChatMessage(
       userId,
       {
@@ -262,7 +331,9 @@ export async function handleTextMessage(ctx: Context): Promise<void> {
       MAX_CHAT_HISTORY
     );
 
-    await ctx.reply(welcomeMessage, { reply_markup: createMainMenu(userLang) });
+    await ctx.reply(welcomeMessage, {
+      reply_markup: createMainMenu(userLang, learningLang)
+    });
     return;
   }
 
@@ -270,7 +341,7 @@ export async function handleTextMessage(ctx: Context): Promise<void> {
   if (messageText === actions.CLEAR_CHAT) {
     store.clearUserChatHistory(userId);
     await ctx.reply(t('chat.cleared', userLang), {
-      reply_markup: createMainMenu(userLang)
+      reply_markup: createMainMenu(userLang, learningLang)
     });
     return;
   }
@@ -376,7 +447,7 @@ export async function handleTextMessage(ctx: Context): Promise<void> {
     }
 
     await ctx.reply(t('general.choose_action', userLang), {
-      reply_markup: createMainMenu(userLang)
+      reply_markup: createMainMenu(userLang, learningLang)
     });
     return;
   }
@@ -404,7 +475,7 @@ export async function handleTextMessage(ctx: Context): Promise<void> {
 
     if (vocabulary.length === 0) {
       await ctx.reply(t('vocabulary.empty', userLang), {
-        reply_markup: createMainMenu(userLang)
+        reply_markup: createMainMenu(userLang, learningLang)
       });
       return;
     }
@@ -434,7 +505,9 @@ export async function handleTextMessage(ctx: Context): Promise<void> {
           })})`
         : '');
 
-    await ctx.reply(message, { reply_markup: createMainMenu(userLang) });
+    await ctx.reply(message, {
+      reply_markup: createMainMenu(userLang, learningLang)
+    });
     return;
   }
 
@@ -529,6 +602,12 @@ export async function handleTextMessage(ctx: Context): Promise<void> {
     return;
   }
 
+  // Handle worksheets menu
+  if (messageText === actions.WORKSHEETS) {
+    await handleWorksheetMenu(ctx);
+    return;
+  }
+
   // Handle normal messages
   if (!store.isUserActive(userId)) {
     await ctx.reply(t('general.choose_action', userLang), {
@@ -563,7 +642,8 @@ export async function handleTextMessage(ctx: Context): Promise<void> {
     messageText,
     userLang,
     formattedHistory,
-    CHAT_HISTORY_TOKENS
+    CHAT_HISTORY_TOKENS,
+    learningLang
   );
 
   // Save assistant's reply to chat history

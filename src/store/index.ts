@@ -16,7 +16,9 @@ import {
 import {
   SupportedLanguage,
   DEFAULT_LANGUAGE,
-  getSubscriptionFeatures
+  getSubscriptionFeatures,
+  SupportedLearningLanguage,
+  DEFAULT_LEARNING_LANGUAGE
 } from '../services/i18n';
 
 /**
@@ -25,7 +27,7 @@ import {
 export class StateStore {
   private users: Map<number, UserState> = new Map();
 
-  // Users actively practicing Hungarian
+  // Users actively practicing their learning language
   private activeChatUsers = new Map<number, number>();
 
   // Active dictation sessions
@@ -33,6 +35,9 @@ export class StateStore {
 
   // User scores
   private userScores = new Map<number, number>();
+
+  // Temporary user data for multi-step interactions
+  private temporaryUserData = new Map<number, Record<string, any>>();
 
   // Last processed word pairs
   private lastWordPairs: WordPair[] = [];
@@ -43,6 +48,7 @@ export class StateStore {
         isActive: false,
         points: 0,
         language: DEFAULT_LANGUAGE,
+        learningLanguage: DEFAULT_LEARNING_LANGUAGE,
         isDiaryMode: false,
         diaryEntries: [],
         processedDiaryEntries: [],
@@ -511,6 +517,79 @@ export class StateStore {
       default:
         return 10;
     }
+  }
+
+  /**
+   * Get user's learning language
+   * @param userId - Telegram user ID
+   */
+  getUserLearningLanguage(userId: number): SupportedLearningLanguage {
+    return this.getOrCreateUser(userId).learningLanguage;
+  }
+
+  /**
+   * Set user's learning language
+   * @param userId - Telegram user ID
+   * @param language - Learning language code
+   */
+  setUserLearningLanguage(
+    userId: number,
+    language: SupportedLearningLanguage
+  ): void {
+    const user = this.getOrCreateUser(userId);
+    user.learningLanguage = language;
+  }
+
+  /**
+   * Set temporary data for a user
+   * @param userId - Telegram user ID
+   * @param key - Data key
+   * @param value - Data value
+   */
+  setUserTemporaryData(userId: number, key: string, value: any): void {
+    if (!this.temporaryUserData.has(userId)) {
+      this.temporaryUserData.set(userId, {});
+    }
+
+    const userData = this.temporaryUserData.get(userId)!;
+    userData[key] = value;
+  }
+
+  /**
+   * Get temporary data for a user
+   * @param userId - Telegram user ID
+   * @param key - Data key
+   * @returns The stored value or undefined if not found
+   */
+  getUserTemporaryData(userId: number, key: string): any {
+    if (!this.temporaryUserData.has(userId)) {
+      return undefined;
+    }
+
+    const userData = this.temporaryUserData.get(userId)!;
+    return userData[key];
+  }
+
+  /**
+   * Clear specific temporary data for a user
+   * @param userId - Telegram user ID
+   * @param key - Data key to clear
+   */
+  clearUserTemporaryData(userId: number, key: string): void {
+    if (!this.temporaryUserData.has(userId)) {
+      return;
+    }
+
+    const userData = this.temporaryUserData.get(userId)!;
+    delete userData[key];
+  }
+
+  /**
+   * Clear all temporary data for a user
+   * @param userId - Telegram user ID
+   */
+  clearAllUserTemporaryData(userId: number): void {
+    this.temporaryUserData.delete(userId);
   }
 }
 

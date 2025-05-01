@@ -7,7 +7,8 @@ import { TELEGRAM_BOT_TOKEN, FFMPEG_PATH } from './config';
 import {
   handleDocumentUpload,
   handleDocumentCallback,
-  handleTextMessage
+  handleTextMessage,
+  handleWorksheetCallback
 } from './handlers';
 import { startActiveUserWorker, startFileCleanupWorker } from './workers/index';
 import { registerSubscriptionHandlers } from './services/subscription';
@@ -20,7 +21,20 @@ const bot = new Bot(TELEGRAM_BOT_TOKEN);
 
 // Register document handlers
 bot.on('message:document', handleDocumentUpload);
-bot.on('callback_query:data', handleDocumentCallback);
+
+// Register callback query handlers
+bot.on('callback_query:data', (ctx) => {
+  // Check the callback data to determine which handler to use
+  const data = ctx.callbackQuery.data;
+
+  if (data.startsWith('process_pdf')) {
+    // Document processing callbacks
+    return handleDocumentCallback(ctx);
+  } else if (data.startsWith('worksheet_')) {
+    // Worksheet generation callbacks
+    return handleWorksheetCallback(ctx);
+  }
+});
 
 // Register text message handler
 bot.on('message:text', handleTextMessage);

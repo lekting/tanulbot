@@ -15,12 +15,10 @@ import {
   DictationFormat,
   DictationState
 } from '../types';
-import {
-  synthesizeSpeech,
-  generateHungarianPhrases,
-  generateHungarianStory
-} from './openai';
+import { synthesizeSpeech, generatePhrases, generateStory } from './openai';
 import { prepareForAudio, prepareTextForAudio } from '../utils/text';
+import { SupportedLearningLanguage } from '../services/i18n';
+import { store } from '../store';
 
 /**
  * Generates dictation phrases with audio based on difficulty
@@ -36,23 +34,27 @@ export async function generateDictationPhrasesByDifficulty(
 ): Promise<{ text: string; audioPath: string }[]> {
   // Ensure user audio directory exists
   const userAudioDir = await ensureUserDir(userId, 'audio');
+  // Get user's learning language
+  const learningLanguage = store.getUserLearningLanguage(userId);
 
   let generatedPhrases: string[] = [];
 
   // Generate content based on the selected format
   if (format === 'words') {
     // For words format, generate individual words
-    generatedPhrases = await generateHungarianPhrases(
+    generatedPhrases = await generatePhrases(
+      learningLanguage,
       difficulty,
       MAX_DICTATION_PHRASES,
       true // Single words mode
     );
   } else if (format === 'stories') {
     // For stories format, generate a short story
-    generatedPhrases = await generateHungarianStory(difficulty);
+    generatedPhrases = await generateStory(learningLanguage, difficulty);
   } else {
     // Default to phrases
-    generatedPhrases = await generateHungarianPhrases(
+    generatedPhrases = await generatePhrases(
+      learningLanguage,
       difficulty,
       MAX_DICTATION_PHRASES
     );
@@ -62,8 +64,8 @@ export async function generateDictationPhrasesByDifficulty(
   const phrases = generatedPhrases.map((text: string, index: number) => {
     // Add numbering to display text
     const displayText = `${index + 1}. ${text}`;
-    // Prepare audio text with Hungarian number
-    const audioText = prepareForAudio(text, index);
+    // Prepare audio text with number in the learning language
+    const audioText = prepareForAudio(text, index, learningLanguage);
 
     return {
       text: displayText,
@@ -77,7 +79,7 @@ export async function generateDictationPhrasesByDifficulty(
   // Generate audio for each phrase
   for (let i = 0; i < phrases.length; i++) {
     const phrase = phrases[i];
-    const audioText = prepareForAudio(phrase.text, i);
+    const audioText = prepareForAudio(phrase.text, i, learningLanguage);
     await synthesizeSpeech(audioText, phrase.audioPath);
   }
 
@@ -96,6 +98,8 @@ export async function generateDictationPhrases(
 ): Promise<{ text: string; audioPath: string }[]> {
   // Ensure user audio directory exists
   const userAudioDir = await ensureUserDir(userId, 'audio');
+  // Get user's learning language
+  const learningLanguage = store.getUserLearningLanguage(userId);
 
   // Select a subset of pairs for dictation
   const selectedPairs = wordPairs.slice(0, MAX_DICTATION_PHRASES);
@@ -117,7 +121,7 @@ export async function generateDictationPhrases(
   // Generate audio for each phrase
   for (let i = 0; i < phrases.length; i++) {
     const phrase = phrases[i];
-    const audioText = prepareForAudio(phrase.text, i);
+    const audioText = prepareForAudio(phrase.text, i, learningLanguage);
     await synthesizeSpeech(audioText, phrase.audioPath);
   }
 
@@ -129,14 +133,18 @@ export async function generateDictationPhrases(
  */
 export async function generateDictationContent(
   format: DictationFormat,
-  difficulty: DictationDifficulty
+  difficulty: DictationDifficulty,
+  userId: number
 ): Promise<string[]> {
+  // Get user's learning language
+  const learningLanguage = store.getUserLearningLanguage(userId);
+
   if (format === 'words') {
-    return generateHungarianPhrases(difficulty, 5, true);
+    return generatePhrases(learningLanguage, difficulty, 5, true);
   } else if (format === 'phrases') {
-    return generateHungarianPhrases(difficulty, 5, false);
+    return generatePhrases(learningLanguage, difficulty, 5, false);
   } else {
-    return generateHungarianStory(difficulty);
+    return generateStory(learningLanguage, difficulty);
   }
 }
 
@@ -149,9 +157,11 @@ export async function prepareDictationAudio(
 ): Promise<void> {
   // Ensure user audio directory exists
   const userAudioDir = await ensureUserDir(userId, 'audio');
+  // Get user's learning language
+  const learningLanguage = store.getUserLearningLanguage(userId);
 
   for (let i = 0; i < phrases.length; i++) {
-    const audioText = prepareForAudio(phrases[i], i);
+    const audioText = prepareForAudio(phrases[i], i, learningLanguage);
     const audioFile = path.join(
       userAudioDir,
       `dictation_${userId}_${i + 1}.mp3`
