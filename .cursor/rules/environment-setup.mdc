@@ -1,0 +1,42 @@
+---
+description: 
+globs: 
+alwaysApply: false
+---
+# Environment Setup and Configuration
+
+## Project Setup
+
+- Node.js 18+ or later is required
+- PNPM is the package manager used for this project
+- TypeScript 5.8+ is used for type safety
+
+## Environment Variables
+
+Environment variables are configured in the `.env` file (see [env.template](mdc:env.template) for required variables):
+
+- `TELEGRAM_BOT_TOKEN` - Telegram bot token from BotFather
+- `OPENAI_API_KEY` - OpenAI API key for AI interactions
+- `TEMP_DIR` - Directory for temporary files
+- Various other configuration options
+
+## Development Workflow
+
+- Use `pnpm dev` to start development server with hot reload
+- Use `pnpm build` to compile TypeScript to JavaScript
+- Use `pnpm start` to run the compiled code
+
+## TypeScript Configuration
+
+- TypeScript configuration is in [tsconfig.json](mdc:tsconfig.json)
+- ES2020 target for modern Node.js compatibility
+- Strict type checking enabled
+- CommonJS modules for Node.js compatibility
+
+## Execution Environment
+
+- The application is designed to run in a Node.js environment
+- FFmpeg is required for audio processing (installed via dependencies)
+- External services: Telegram Bot API, OpenAI API
+- Consider system resource limitations when deploying
+

@@ -1,0 +1,44 @@
+---
+description: 
+globs: 
+alwaysApply: true
+---
+# Performance Guidelines
+
+## General Principles
+
+- Optimize for readability first, then performance
+- Profile before optimizing - identify actual bottlenecks
+- Optimize critical paths that affect user experience
+- Consider memory usage in long-running processes
+
+## Asynchronous Operations
+
+- Use async/await for all asynchronous operations
+- Avoid nested Promises and callback chains
+- Use Promise.all for parallel operations when possible
+- Consider Promise.allSettled for operations that can fail independently
+- Implement timeouts for external API calls
+
+## Processing Large Files
+
+- Process large files in chunks to avoid memory issues
+- Use streams for file operations when appropriate
+- Implement progress tracking for long-running operations
+- Consider using Web Workers for CPU-intensive tasks
+
+## Data Optimization
+
+- Cache expensive operation results
+- Implement proper memory cleanup for large objects
+- Use pagination for large datasets
+- Minimize unnecessary object creation and copying
+- Use Set and Map for frequently accessed collections
+
+## Bot Response Time
+
+- Prioritize quick responses to users
+- Use typing indicators for long operations
+- Consider background processing for non-critical tasks
+- Implement debouncing for operations that might be triggered repeatedly
+

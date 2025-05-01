@@ -1,0 +1,46 @@
+---
+description: 
+globs: 
+alwaysApply: true
+---
+# TypeScript Coding Standards
+
+## TypeScript Best Practices
+
+- Use TypeScript 5.8+ features including template literal types and const type parameters
+- Always define explicit return types for functions
+- Use interfaces for object types and type aliases for unions, primitives, and tuples
+- Prefer readonly properties when objects shouldn't be mutated
+- Use type narrowing with type guards instead of type assertions (as)
+- Use the nullish coalescing operator (??) over logical OR (||) when dealing with null/undefined
+- Use optional chaining (?.) for nullable or undefined properties
+
+## Naming Conventions
+
+- Use camelCase for variables, functions, methods, and properties
+- Use PascalCase for classes, interfaces, types, and enums
+- Use ALL_CAPS for constants
+- Prefix private properties with underscore (_)
+- Use descriptive names that reveal intent
+
+## Module Organization
+
+- Organize code by feature with clear separation of concerns
+- Export all types from a single `types/index.ts` file
+- Keep related functionality in the same directory
+- Use barrel exports (index.ts files) to simplify imports
+
+## Error Handling
+
+- Use typed Error classes extending Error
+- Handle errors at the appropriate level
+- Avoid try/catch blocks that swallow errors
+- Use async/await with proper error handling
+
+## Code Structure
+
+- Prefer pure functions when possible
+- Limit function size to maintain readability (max ~25 lines)
+- Use early returns to reduce nesting
+- Avoid comments - write self-documenting code with descriptive variable names
+

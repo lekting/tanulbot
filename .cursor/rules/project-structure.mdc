@@ -1,0 +1,21 @@
+---
+description: 
+globs: 
+alwaysApply: false
+---
+# Project Structure - TanulBot
+
+This is a Telegram bot for learning Hungarian, built with TypeScript and the grammY framework.
+
+## Main Components
+
+- [src/index.ts](mdc:src/index.ts) - Main application entry point
+- [src/config/index.ts](mdc:src/config/index.ts) - Configuration settings
+- [src/handlers/index.ts](mdc:src/handlers/index.ts) - Telegram bot message and callback handlers
+- [src/services](mdc:src/services) - Core application services
+- [src/types/index.ts](mdc:src/types/index.ts) - TypeScript type definitions
+- [src/utils](mdc:src/utils) - Utility functions
+- [src/workers](mdc:src/workers) - Background task workers
+- [src/bot](mdc:src/bot) - Bot-specific functionality
+- [src/store](mdc:src/store) - Data persistence
+

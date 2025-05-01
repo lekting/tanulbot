@@ -1,0 +1,45 @@
+---
+description: 
+globs: 
+alwaysApply: true
+---
+# Data Structures and Types
+
+## Type Definitions
+
+All core type definitions are in [src/types/index.ts](mdc:src/types/index.ts):
+
+- Use TypeScript interfaces for complex objects
+- Use type aliases for union types and simple types
+- Use enums for limited sets of values
+- Export all types from the central types file
+
+## Key Data Structures
+
+- **UserState** - Represents a user's state and preferences
+- **ChatMessage** - Structure for chat messages with role and content
+- **VocabularyEntry** - Structure for vocabulary words and learning data
+- **DiaryEntry** - User diary entries for language learning
+- **ProcessedDiaryEntry** - AI-processed diary entries with corrections
+- **AnkiDeck** - Structure for exported Anki flashcard decks
+
+## Type Safety
+
+- All function parameters and return values should be typed
+- Use discriminated unions for complex state management
+- Avoid any type except in specific integration points
+- Use Record<K, V> for dictionary-like structures instead of object literals
+- Use readonly modifiers for values that shouldn't change
+
+## Type Guards
+
+- Create explicit type guard functions for complex type checking
+- Use the is keyword for proper type narrowing
+- Prefer type guards over type assertions
+
+## Generic Types
+
+- Use generics for reusable type patterns
+- Constrain generic types when possible using extends
+- Use utility types (Pick, Omit, Partial, etc.) to derive types
+

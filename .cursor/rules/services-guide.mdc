@@ -1,0 +1,44 @@
+---
+description: 
+globs: 
+alwaysApply: true
+---
+# Services Guide
+
+## Service Organization
+
+Services handle business logic and external integrations:
+
+- Core services should be stateless when possible
+- Each service should have a clearly defined responsibility
+- Services should be organized in the [src/services](mdc:src/services) directory
+
+## Service Dependencies
+
+- Services may depend on other services
+- Dependencies should be explicitly injected
+- Circular dependencies must be avoided
+- Create abstraction layers for external services (OpenAI, etc.)
+
+## Key Services
+
+- **OpenAI Service** - Handles AI interactions including text generation and speech synthesis
+- **File Service** - Manages temporary files and cleanup
+- **Vocabulary Service** - Manages users' vocabulary and learning progress
+- **User Service** - Handles user state and preferences
+- **Internationalization Service** - Manages language translations
+- **Audio Service** - Handles audio processing using FFmpeg
+
+## Service Interface Design
+
+- Services should expose a clear public API
+- Service implementation details should be private
+- Service methods should have well-defined input/output types
+- Services should handle their own errors and provide meaningful error information
+
+## Testing Services
+
+- Services should be designed for testability
+- External dependencies should be mockable
+- Core business logic should be separated from external API calls
+

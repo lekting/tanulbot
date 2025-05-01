@@ -1,0 +1,45 @@
+---
+description: 
+globs: 
+alwaysApply: true
+---
+# Bot Architecture
+
+## Core Architecture
+
+The bot follows a modular architecture pattern with:
+
+- [src/bot](mdc:src/bot) - Contains core bot initialization and middleware
+- [src/handlers](mdc:src/handlers) - Event handlers for messages and callbacks
+- [src/services](mdc:src/services) - Business logic services
+- [src/store](mdc:src/store) - Data persistence layer
+
+## Message Flow
+
+1. User sends message/callback to bot
+2. Message is received by the appropriate handler in [src/handlers](mdc:src/handlers)
+3. Handler uses services to process the request
+4. Services retrieve/update data through the store
+5. Response is sent back to user
+
+## Worker System
+
+Background tasks run on intervals:
+- [src/workers](mdc:src/workers) - Contains background tasks that run independently
+- User activity tracking
+- File cleanup for temporary files
+
+## Error Handling Strategy
+
+- All errors should be caught and logged
+- User-facing errors should provide helpful context
+- System errors should be logged but not exposed to users
+- Application should gracefully recover from errors when possible
+
+## State Management
+
+- User state is managed through the store layer
+- Conversation state is tracked to maintain context
+- Temporary application state is stored in memory
+- Persistent state is saved to external storage
+
