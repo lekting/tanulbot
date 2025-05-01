@@ -1,7 +1,16 @@
 /**
  * Application state management
  */
-import { DictationState, WordPair, DiaryEntry, ProcessedDiaryEntry, UserState, ChatMessage, VocabularyEntry } from '../types';
+import {
+  DictationState,
+  WordPair,
+  DiaryEntry,
+  ProcessedDiaryEntry,
+  UserState,
+  ChatMessage,
+  VocabularyEntry,
+  DictationFormat
+} from '../types';
 import { SupportedLanguage, DEFAULT_LANGUAGE } from '../services/i18n';
 
 /**
@@ -9,16 +18,16 @@ import { SupportedLanguage, DEFAULT_LANGUAGE } from '../services/i18n';
  */
 export class StateStore {
   private users: Map<number, UserState> = new Map();
-  
+
   // Users actively practicing Hungarian
   private activeChatUsers = new Map<number, number>();
-  
+
   // Active dictation sessions
   private activeDictations = new Map<number, DictationState>();
-  
+
   // User scores
   private userScores = new Map<number, number>();
-  
+
   // Last processed word pairs
   private lastWordPairs: WordPair[] = [];
 
@@ -208,15 +217,19 @@ export class StateStore {
    * @param message - The chat message to add
    * @param maxHistory - Maximum number of messages to keep in history (default: 10)
    */
-  addChatMessage(userId: number, message: ChatMessage, maxHistory: number = 10): void {
+  addChatMessage(
+    userId: number,
+    message: ChatMessage,
+    maxHistory: number = 10
+  ): void {
     const user = this.getOrCreateUser(userId);
     user.chatHistory.push(message);
-    
+
     // Trim history if it exceeds maximum length
     if (user.chatHistory.length > maxHistory) {
       user.chatHistory = user.chatHistory.slice(-maxHistory);
     }
-    
+
     // Update last chat timestamp
     user.lastChatTimestamp = Date.now();
   }
@@ -260,12 +273,12 @@ export class StateStore {
    */
   addToVocabulary(userId: number, entry: VocabularyEntry): void {
     const user = this.getOrCreateUser(userId);
-    
+
     // Check if the word already exists
     const existingIndex = user.vocabulary.findIndex(
-      item => item.word.toLowerCase() === entry.word.toLowerCase()
+      (item) => item.word.toLowerCase() === entry.word.toLowerCase()
     );
-    
+
     if (existingIndex >= 0) {
       // Update existing entry
       const existing = user.vocabulary[existingIndex];
@@ -294,12 +307,12 @@ export class StateStore {
    * @returns Array of vocabulary entries
    */
   getUserVocabulary(
-    userId: number, 
-    limit?: number, 
+    userId: number,
+    limit?: number,
     sortBy: keyof VocabularyEntry = 'addedDate'
   ): VocabularyEntry[] {
     const user = this.getOrCreateUser(userId);
-    
+
     // Sort entries by the specified field
     const sorted = [...user.vocabulary].sort((a, b) => {
       if (typeof a[sortBy] === 'number' && typeof b[sortBy] === 'number') {
@@ -307,12 +320,12 @@ export class StateStore {
       }
       return 0;
     });
-    
+
     // Apply limit if specified
     if (limit && limit > 0) {
       return sorted.slice(0, limit);
     }
-    
+
     return sorted;
   }
 
@@ -325,10 +338,11 @@ export class StateStore {
   searchVocabulary(userId: number, query: string): VocabularyEntry[] {
     const user = this.getOrCreateUser(userId);
     const searchTerm = query.toLowerCase();
-    
-    return user.vocabulary.filter(entry => 
-      entry.word.toLowerCase().includes(searchTerm) ||
-      entry.translation.toLowerCase().includes(searchTerm)
+
+    return user.vocabulary.filter(
+      (entry) =>
+        entry.word.toLowerCase().includes(searchTerm) ||
+        entry.translation.toLowerCase().includes(searchTerm)
     );
   }
 
@@ -341,11 +355,11 @@ export class StateStore {
   removeFromVocabulary(userId: number, word: string): boolean {
     const user = this.getOrCreateUser(userId);
     const initialLength = user.vocabulary.length;
-    
+
     user.vocabulary = user.vocabulary.filter(
-      entry => entry.word.toLowerCase() !== word.toLowerCase()
+      (entry) => entry.word.toLowerCase() !== word.toLowerCase()
     );
-    
+
     return user.vocabulary.length < initialLength;
   }
 
@@ -356,13 +370,34 @@ export class StateStore {
    */
   exportVocabularyToWordPairs(userId: number): WordPair[] {
     const user = this.getOrCreateUser(userId);
-    
-    return user.vocabulary.map(entry => ({
+
+    return user.vocabulary.map((entry) => ({
       front: entry.word,
       back: entry.translation
     }));
   }
+
+  /**
+   * Set the dictation type for a user
+   * @param userId - Telegram user ID
+   * @param type - Dictation type
+   */
+  setUserDictationType(userId: number, type: DictationFormat): void {
+    // If there's an existing dictation, update its format
+    if (this.activeDictations.has(userId)) {
+      const dictation = this.activeDictations.get(userId)!;
+      this.activeDictations.set(userId, { ...dictation, format: type });
+    } else {
+      // Otherwise create a new dictation state with the format
+      this.activeDictations.set(userId, {
+        currentIndex: 0,
+        phrases: [],
+        points: 0,
+        format: type
+      });
+    }
+  }
 }
 
 // Export singleton instance
-export const store = new StateStore(); 
+export const store = new StateStore();

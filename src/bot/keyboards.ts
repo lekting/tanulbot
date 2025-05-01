@@ -25,7 +25,11 @@ export const KEYBOARD_IDS = {
   LANGUAGE_RU: 'language.ru',
   CLEAR_CHAT: 'chat.clear',
   VIEW_CHAT: 'chat.view',
-  VIEW_VOCABULARY: 'menu.vocabulary'
+  VIEW_VOCABULARY: 'menu.vocabulary',
+  DICTATION_TYPE_WORDS: 'dictation.type.words',
+  DICTATION_TYPE_PHRASES: 'dictation.type.phrases',
+  DICTATION_TYPE_STORIES: 'dictation.type.stories',
+  CHOOSE_DIFFICULTY: 'dictation.choose_difficulty'
 };
 
 /**
@@ -33,11 +37,16 @@ export const KEYBOARD_IDS = {
  * @param language - User language
  * @returns Dictionary of localized keyboard actions
  */
-export function getKeyboardActions(language: SupportedLanguage): Record<string, string> {
-  return Object.entries(KEYBOARD_IDS).reduce((actions, [key, translationKey]) => {
-    actions[key] = t(translationKey, language);
-    return actions;
-  }, {} as Record<string, string>);
+export function getKeyboardActions(
+  language: SupportedLanguage
+): Record<string, string> {
+  return Object.entries(KEYBOARD_IDS).reduce(
+    (actions, [key, translationKey]) => {
+      actions[key] = t(translationKey, language);
+      return actions;
+    },
+    {} as Record<string, string>
+  );
 }
 
 /**
@@ -46,14 +55,36 @@ export function getKeyboardActions(language: SupportedLanguage): Record<string, 
  */
 export function createMainMenu(language: SupportedLanguage): Keyboard {
   const actions = getKeyboardActions(language);
-  
+
   return new Keyboard()
-    .text(actions.PRACTICE_HUNGARIAN).row()
-    .text(actions.START_DICTATION).text(actions.STOP_DICTATION).row()
-    .text(actions.WRITE_DIARY).text(actions.GENERATE_ANKI).row()
-    .text(actions.MY_ACHIEVEMENTS).text(actions.VIEW_VOCABULARY).row()
-    .text(actions.VIEW_CHAT).text(actions.CLEAR_CHAT).row()
+    .text(actions.PRACTICE_HUNGARIAN)
+    .row()
+    .text(actions.START_DICTATION)
+    .row()
+    .text(actions.WRITE_DIARY)
+    .text(actions.GENERATE_ANKI)
+    .row()
+    .text(actions.MY_ACHIEVEMENTS)
+    .text(actions.VIEW_VOCABULARY)
+    .row()
+    .text(actions.VIEW_CHAT)
+    .text(actions.CLEAR_CHAT)
+    .row()
     .text(`🌐 ${language.toUpperCase()}`)
+    .resized();
+}
+
+/**
+ * Create dictation mode keyboard
+ * @param language - User language
+ */
+export function createDictationMenu(language: SupportedLanguage): Keyboard {
+  const actions = getKeyboardActions(language);
+
+  return new Keyboard()
+    .text(actions.STOP_DICTATION)
+    .row()
+    .text(actions.BACK_TO_MENU)
     .resized();
 }
 
@@ -63,9 +94,10 @@ export function createMainMenu(language: SupportedLanguage): Keyboard {
  */
 export function createDiaryMenu(language: SupportedLanguage): Keyboard {
   const actions = getKeyboardActions(language);
-  
+
   return new Keyboard()
-    .text(actions.STOP_DIARY).row()
+    .text(actions.STOP_DIARY)
+    .row()
     .text(actions.BACK_TO_MENU)
     .resized();
 }
@@ -76,9 +108,11 @@ export function createDiaryMenu(language: SupportedLanguage): Keyboard {
  */
 export function createFormatMenu(language: SupportedLanguage): Keyboard {
   const actions = getKeyboardActions(language);
-  
+
   return new Keyboard()
-    .text(actions.FORMAT_WORDS).text(actions.FORMAT_STORY).row()
+    .text(actions.FORMAT_WORDS)
+    .text(actions.FORMAT_STORY)
+    .row()
     .text(actions.BACK_TO_MENU)
     .resized();
 }
@@ -89,9 +123,12 @@ export function createFormatMenu(language: SupportedLanguage): Keyboard {
  */
 export function createDifficultyMenu(language: SupportedLanguage): Keyboard {
   const actions = getKeyboardActions(language);
-  
+
   return new Keyboard()
-    .text(actions.DIFFICULTY_EASY).text(actions.DIFFICULTY_MEDIUM).text(actions.DIFFICULTY_HARD).row()
+    .text(actions.DIFFICULTY_EASY)
+    .text(actions.DIFFICULTY_MEDIUM)
+    .text(actions.DIFFICULTY_HARD)
+    .row()
     .text(actions.BACK_TO_MENU)
     .resized();
 }
@@ -101,7 +138,25 @@ export function createDifficultyMenu(language: SupportedLanguage): Keyboard {
  */
 export function createLanguageMenu(): Keyboard {
   return new Keyboard()
-    .text('🇬🇧 English').text('🇷🇺 Русский').row()
+    .text('🇬🇧 English')
+    .text('🇷🇺 Русский')
+    .row()
     .text(t('menu.back'))
     .resized();
-} 
+}
+
+/**
+ * Create dictation type selection keyboard
+ * @param language - User language
+ */
+export function createDictationTypeMenu(language: SupportedLanguage): Keyboard {
+  const actions = getKeyboardActions(language);
+
+  return new Keyboard()
+    .text(actions.DICTATION_TYPE_WORDS)
+    .text(actions.DICTATION_TYPE_PHRASES)
+    .text(actions.DICTATION_TYPE_STORIES)
+    .row()
+    .text(actions.BACK_TO_MENU)
+    .resized();
+}

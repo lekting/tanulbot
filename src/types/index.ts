@@ -4,7 +4,7 @@
 import { SupportedLanguage } from '../services/i18n';
 
 export type DictationDifficulty = 'easy' | 'medium' | 'hard';
-export type DictationFormat = 'words' | 'story';
+export type DictationFormat = 'words' | 'phrases' | 'stories';
 
 /**
  * Structure for dictation state tracking
@@ -30,12 +30,12 @@ export interface ChatMessage {
  * User vocabulary word entry
  */
 export interface VocabularyEntry {
-  word: string;            // Hungarian word
-  translation: string;     // Translation to user's language
-  context?: string;        // Example sentence or context where the word was used
-  addedDate: number;       // Timestamp when the word was added
-  lastPracticed?: number;  // Timestamp of last practice
-  errorCount: number;      // Number of times user made errors with this word
+  word: string; // Hungarian word
+  translation: string; // Translation to user's language
+  context?: string; // Example sentence or context where the word was used
+  addedDate: number; // Timestamp when the word was added
+  lastPracticed?: number; // Timestamp of last practice
+  errorCount: number; // Number of times user made errors with this word
 }
 
 /**
@@ -50,7 +50,7 @@ export interface UserState {
   processedDiaryEntries: ProcessedDiaryEntry[];
   chatHistory: ChatMessage[];
   lastChatTimestamp?: number;
-  vocabulary: VocabularyEntry[];  // User's personal vocabulary
+  vocabulary: VocabularyEntry[]; // User's personal vocabulary
 }
 
 /**
@@ -58,13 +58,19 @@ export interface UserState {
  */
 export interface WordPair {
   front: string; // Hungarian word
-  back: string;  // Russian translation
+  back: string; // Russian translation
 }
 
 /**
  * Voice options for text-to-speech
  */
-export type OpenAIVoice = 'alloy' | 'echo' | 'fable' | 'onyx' | 'nova' | 'shimmer';
+export type OpenAIVoice =
+  | 'alloy'
+  | 'echo'
+  | 'fable'
+  | 'onyx'
+  | 'nova'
+  | 'shimmer';
 
 /**
  * Structure for diary entries
@@ -83,8 +89,8 @@ export interface ProcessedDiaryEntry {
   correctedText: string;
   improvements: string[];
   unknownWords: WordPair[];
-  mnemonics: { 
-    word: string; 
+  mnemonics: {
+    word: string;
     mnemonic: string;
     exampleSentence?: string;
     pronunciation?: string;
@@ -100,4 +106,4 @@ export interface AnkiDeck {
   date: string;
   userId: number;
   filePath?: string;
-} 
+}

@@ -1,27 +1,4 @@
 /**
- * Text processing utilities
- */
-import { CHARS_PER_TOKEN, TOKEN_COST } from '../config';
-
-/**
- * Estimates the number of tokens in a text
- * @param text - The text to analyze
- * @returns Estimated token count
- */
-export function countTokens(text: string): number {
-  return Math.ceil(text.length / CHARS_PER_TOKEN);
-}
-
-/**
- * Estimates the cost of processing a text
- * @param tokens - Number of tokens
- * @returns Estimated cost in USD
- */
-export function estimateCost(tokens: number): number {
-  return tokens * TOKEN_COST;
-}
-
-/**
  * Checks if text appears to be Hungarian
  * @param text - The text to analyze
  * @returns Boolean indicating if text appears to be Hungarian
@@ -47,8 +24,17 @@ export function removeNumbering(text: string): string {
  */
 export function getHungarianNumber(num: number): string {
   const numbers = [
-    'nulla', 'egy', 'kettő', 'három', 'négy', 
-    'öt', 'hat', 'hét', 'nyolc', 'kilenc', 'tíz'
+    'nulla',
+    'egy',
+    'kettő',
+    'három',
+    'négy',
+    'öt',
+    'hat',
+    'hét',
+    'nyolc',
+    'kilenc',
+    'tíz'
   ];
   return numbers[num] || num.toString();
 }
@@ -95,7 +81,10 @@ export function normalizeHungarianText(text: string): string {
  * @param expected - Expected correct text
  * @returns Boolean indicating if texts match
  */
-export function compareHungarianTexts(input: string, expected: string): boolean {
+export function compareHungarianTexts(
+  input: string,
+  expected: string
+): boolean {
   // Remove numbering and normalize both texts
   const normalizedInput = normalizeHungarianText(input);
   const normalizedExpected = normalizeHungarianText(expected);
@@ -134,10 +123,10 @@ export function compareHungarianTexts(input: string, expected: string): boolean 
  * @returns User level label
  */
 export function getUserLevel(points: number): string {
-  if (points < 100) return "🌱 Újónc (Beginner)";
-  if (points < 300) return "🎯 Tanuló (Student)";
-  if (points < 600) return "🚀 Haladó (Advanced)";
-  return "🏆 Mester (Master)";
+  if (points < 100) return '🌱 Újónc (Beginner)';
+  if (points < 300) return '🎯 Tanuló (Student)';
+  if (points < 600) return '🚀 Haladó (Advanced)';
+  return '🏆 Mester (Master)';
 }
 
 export function prepareTextForAudio(text: string): string {
@@ -146,4 +135,4 @@ export function prepareTextForAudio(text: string): string {
     .replace(/[^\w\s]/g, '')
     .replace(/\s+/g, ' ')
     .trim();
-} 
+}
