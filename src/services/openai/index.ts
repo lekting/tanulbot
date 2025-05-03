@@ -86,8 +86,6 @@ export async function chatCompletion(
       output: response
     });
 
-    console.log('Token result:', tokenResult, inputTokens, outputTokens);
-
     // Use the more accurate token count from the API if available
     const finalInputTokens = inputTokens || tokenResult.inputTokens;
     const finalOutputTokens = outputTokens || tokenResult.outputTokens;

@@ -37,6 +37,9 @@ export const KEYBOARD_IDS = {
   DICTATION_TYPE_PHRASES: 'dictation.type.phrases',
   DICTATION_TYPE_STORIES: 'dictation.type.stories',
   CHOOSE_DIFFICULTY: 'dictation.choose_difficulty',
+  TOPIC_STUDY: 'menu.topic_study',
+  TOPIC_STUDY_CHANGE: 'topic_study.change',
+  TOPIC_STUDY_BACK: 'topic_study.back',
 
   // Subscription actions
   SUBSCRIPTION_STATUS: 'subscription.status',
@@ -86,6 +89,8 @@ export function createMainMenu(
     .text(actions.PRACTICE_LANGUAGE)
     .row()
     .text(actions.START_DICTATION)
+    .row()
+    .text(actions.TOPIC_STUDY)
     .row()
     .text(actions.WRITE_DIARY)
     .text(actions.GENERATE_ANKI)
@@ -223,5 +228,19 @@ export function createDictationTypeMenu(language: SupportedLanguage): Keyboard {
     .text(actions.DICTATION_TYPE_STORIES)
     .row()
     .text(actions.BACK_TO_MENU)
+    .resized();
+}
+
+/**
+ * Create topic study menu keyboard
+ * @param language - User language
+ */
+export function createTopicStudyMenu(language: SupportedLanguage): Keyboard {
+  const actions = getKeyboardActions(language);
+
+  return new Keyboard()
+    .text(actions.TOPIC_STUDY_CHANGE)
+    .row()
+    .text(actions.TOPIC_STUDY_BACK)
     .resized();
 }

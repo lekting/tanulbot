@@ -39,14 +39,14 @@ importers:
         specifier: ^3.14.1
         version: 3.14.1
       openai:
-        specifier: ^4.96.2
-        version: 4.96.2
+        specifier: ^4.97.0
+        version: 4.97.0
       pdf-parse:
         specifier: ^1.1.1
         version: 1.1.1
       pdfkit:
-        specifier: ^0.17.0
-        version: 0.17.0
+        specifier: ^0.17.1
+        version: 0.17.1
       reflect-metadata:
         specifier: ^0.2.2
         version: 0.2.2
@@ -607,8 +607,8 @@ packages:
     resolution: {integrity: sha512-6eZs5Ls3WtCisHWp9S2GUy8dqkpGi4BVSz3GaqiE6ezub0512ESztXUwUB6C6IKbQkY2Pnb/mD4WYojCRwcwLA==}
     engines: {node: '>=0.10.0'}
 
-  openai@4.96.2:
-    resolution: {integrity: sha512-R2XnxvMsizkROr7BV3uNp1q/3skwPZ7fmPjO1bXLnfB4Tu5xKxrT1EVwzjhxn0MZKBKAvOaGWS63jTMN6KrIXA==}
+  openai@4.97.0:
+    resolution: {integrity: sha512-LRoiy0zvEf819ZUEJhgfV8PfsE8G5WpQi4AwA1uCV8SKvvtXQkoWUFkepD6plqyJQRghy2+AEPQ07FrJFKHZ9Q==}
     hasBin: true
     peerDependencies:
       ws: ^8.18.0
@@ -637,8 +637,8 @@ packages:
     resolution: {integrity: sha512-v6ZJ/efsBpGrGGknjtq9J/oC8tZWq0KWL5vQrk2GlzLEQPUDB1ex+13Rmidl1neNN358Jn9EHZw5y07FFtaC7A==}
     engines: {node: '>=6.8.1'}
 
-  pdfkit@0.17.0:
-    resolution: {integrity: sha512-XRb2Bwtl+oIo+TOf4HOlbqIn6NBiYk8Um4FsfKXrgX9uZQILTbXDlbf0DEZQJxFqognrwIS5QFn5PsOxU8eLMA==}
+  pdfkit@0.17.1:
+    resolution: {integrity: sha512-Kkf1I9no14O/uo593DYph5u3QwiMfby7JsBSErN1WqeyTgCBNJE3K4pXBn3TgkdKUIVu+buSl4bYUNC+8Up4xg==}
 
   picomatch@2.3.1:
     resolution: {integrity: sha512-JU3teHTNjmE2VCGFzuY8EXzCDVwEqB2a8fsIvwaStHhAWJEeVd1o1QD80CU6+ZdEXXSLbSsuLwJjkCBWqRQUVA==}
@@ -1400,7 +1400,7 @@ snapshots:
 
   normalize-path@3.0.0: {}
 
-  openai@4.96.2:
+  openai@4.97.0:
     dependencies:
       '@types/node': 18.19.87
       '@types/node-fetch': 2.6.12
@@ -1430,7 +1430,7 @@ snapshots:
     transitivePeerDependencies:
       - supports-color
 
-  pdfkit@0.17.0:
+  pdfkit@0.17.1:
     dependencies:
       crypto-js: 4.2.0
       fontkit: 2.0.4

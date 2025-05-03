@@ -134,5 +134,6 @@ export enum UserMode {
   PRACTICE = 'practice',
   DIARY = 'diary',
   DICTATION = 'dictation',
-  WORKSHEET = 'worksheet'
+  WORKSHEET = 'worksheet',
+  TOPIC_STUDY = 'topic_study'
 }

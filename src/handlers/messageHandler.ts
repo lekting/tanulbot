@@ -8,20 +8,30 @@ import {
   createDictationMenu,
   createDictationTypeMenu,
   createSubscriptionMenu,
-  createLearningLanguageMenu
+  createLearningLanguageMenu,
+  createTopicStudyMenu
 } from '../bot/keyboards';
-import { correctAndReplyWithWords } from '../services/openai/index';
+import {
+  correctAndReplyWithWords,
+  chatCompletion
+} from '../services/openai/index';
 import { generateDictationPhrasesByDifficulty } from '../services/dictation';
 import { getUserLevel, compareHungarianTexts } from '../utils/text';
 import { store } from '../store';
-import { DictationDifficulty, DictationFormat } from '../types';
+import { DictationDifficulty, DictationFormat, UserMode } from '../types';
 import {
   processDiaryEntry,
   createAnkiDeck,
   generateLearningSuggestions,
   cleanupAnkiDeckFile
 } from '../services/diary';
-import { t } from '../services/i18n';
+import {
+  t,
+  SupportedLanguage,
+  SupportedLearningLanguage,
+  LEARNING_LANGUAGE_TO_NAME,
+  CODE_TO_LANGUAGE
+} from '../services/i18n';
 import fs from 'fs/promises';
 import { CHAT_HISTORY_TOKENS, MAX_CHAT_HISTORY } from '../config';
 import {
@@ -46,10 +56,12 @@ import {
   LEARNING_ITALIAN,
   DIARY_SUMMARY_LIMIT,
   SUBSCRIPTION_BASIC,
-  SUBSCRIPTION_PREMIUM
+  SUBSCRIPTION_PREMIUM,
+  TOPIC_STUDY_CHANGE,
+  TOPIC_STUDY_BACK
 } from '../constants/messageHandler';
-import { UserMode } from '../types';
 import { DatabaseService } from '../services/DatabaseService';
+import { sendSplitMessage } from '../utils/message';
 
 // Create a database service instance for logging
 const databaseService = new DatabaseService();
@@ -332,6 +344,51 @@ export async function handleTextMessage(ctx: Context): Promise<void> {
     return;
   }
 
+  // Handle topic study menu option
+  if (messageText === actions.TOPIC_STUDY) {
+    // Set user mode to topic study
+    await store.setUserMode(userId, UserMode.TOPIC_STUDY);
+
+    // Ask the user what topic they want to study
+    await ctx.reply(t('topic_study.intro', userLang), {
+      reply_markup: createMainMenu(userLang, learningLang)
+    });
+    return;
+  }
+
+  // Handle topic study change request
+  if (
+    messageText === actions.TOPIC_STUDY_CHANGE ||
+    messageText === TOPIC_STUDY_CHANGE
+  ) {
+    // Keep the user in topic study mode but reset their topic
+    store.clearUserTemporaryData(userId, 'currentTopic');
+
+    // Ask the user for a new topic
+    await ctx.reply(t('topic_study.intro', userLang), {
+      reply_markup: createTopicStudyMenu(userLang)
+    });
+    return;
+  }
+
+  // Handle back to main menu from topic study
+  if (
+    messageText === actions.TOPIC_STUDY_BACK ||
+    messageText === TOPIC_STUDY_BACK
+  ) {
+    // Reset user mode to default
+    await store.setUserMode(userId, UserMode.DEFAULT);
+
+    // Clear their topic study temporary data
+    store.clearUserTemporaryData(userId, 'currentTopic');
+
+    // Show main menu
+    await ctx.reply(t('general.choose_action', userLang), {
+      reply_markup: createMainMenu(userLang, learningLang)
+    });
+    return;
+  }
+
   // Handle /start command
   if (messageText === '/start') {
     store.setUserMode(userId, UserMode.DEFAULT);
@@ -369,6 +426,14 @@ export async function handleTextMessage(ctx: Context): Promise<void> {
     await ctx.reply(t('achievements.stats', userLang, { points, level }), {
       reply_markup: createMainMenu(userLang)
     });
+    return;
+  }
+
+  // Check if user is in topic study mode
+  const userMode = await store.getUserMode(userId);
+  if (userMode === UserMode.TOPIC_STUDY) {
+    // Handle text input for topic study mode
+    await handleTopicStudy(ctx, userId, messageText, userLang, learningLang);
     return;
   }
 
@@ -735,5 +800,129 @@ export async function handleTextMessage(ctx: Context): Promise<void> {
     );
   } else {
     await ctx.reply(response.text, { reply_markup: createMainMenu(userLang) });
+  }
+}
+
+/**
+ * Handle topic study interaction
+ * @param ctx - Telegram context
+ * @param userId - User ID
+ * @param messageText - Message text
+ * @param userLang - User language
+ * @param learningLang - Learning language
+ */
+async function handleTopicStudy(
+  ctx: Context,
+  userId: number,
+  messageText: string,
+  userLang: SupportedLanguage,
+  learningLang: SupportedLearningLanguage
+): Promise<void> {
+  // Check if the user already has a current topic
+  const currentTopic = store.getUserTemporaryData(userId, 'currentTopic');
+  const userLanguage = CODE_TO_LANGUAGE[userLang];
+
+  if (!currentTopic) {
+    // This is the first message - the user is providing the topic they want to study
+    // Save the topic
+    store.setUserTemporaryData(userId, 'currentTopic', messageText);
+
+    // Inform the user we're preparing the lesson
+    await ctx.reply(
+      t('topic_study.waiting', userLang, { topic: messageText }),
+      { reply_markup: createTopicStudyMenu(userLang) }
+    );
+
+    // Generate the lesson using ChatGPT
+    try {
+      const prompt = `You're the best ${LEARNING_LANGUAGE_TO_NAME[learningLang]} language teacher for ${userLanguage}-speaking people. Your task is to explain topics very clearly and thoroughly. After your explanation, provide 3 exercises to reinforce the well-explained topic. Your explanations should be as clear as possible, with examples and details.
+       
+Right now, your task is to teach me about the topic "${messageText}"
+
+Use basic HTML formatting: <b>bold</b>, <i>italic</i>, <u>underline</u>, and <pre>code blocks</pre>.
+You can create lists with:
+<ul>
+  <li>Item 1</li>
+  <li>Item 2</li>
+</ul>
+
+Respond in ${userLanguage} language`;
+
+      // Send typing indicator
+      await ctx.api.sendChatAction(userId, 'typing');
+
+      // Get the response from the AI
+      const response = await chatCompletion(
+        prompt,
+        0.7,
+        userId,
+        databaseService
+      );
+
+      // Отправляем ответ, разбивая на части если необходимо
+      await sendSplitMessage({
+        ctx,
+        text: response,
+        keyboard: createTopicStudyMenu(userLang),
+        parseMode: 'HTML'
+      });
+    } catch (error) {
+      console.error('Error generating topic study lesson:', error);
+
+      // Inform the user about the error
+      await ctx.reply(
+        `Error: Unable to generate lesson for topic "${messageText}". Please try again or choose another topic.`,
+        { reply_markup: createTopicStudyMenu(userLang) }
+      );
+    }
+  } else {
+    // User already has a topic - this is a follow-up message/answer to an exercise
+    try {
+      // Send typing indicator
+      await ctx.api.sendChatAction(userId, 'typing');
+
+      // Create a prompt to evaluate the user's answer
+      const prompt = `
+You are a ${LEARNING_LANGUAGE_TO_NAME[learningLang]} language teacher. The student is learning about "${currentTopic}" and has submitted the following response to an exercise:
+
+"${messageText}"
+
+Evaluate their answer:
+1. Provide corrections for any mistakes
+2. Explain why those mistakes were made 
+3. Give positive feedback on what they did correctly
+4. If appropriate, provide a model answer they can study
+
+IMPORTANT REQUIREMENTS:
+- Use basic HTML formatting: <b>bold</b>, <i>italic</i>, and <pre>code</pre> for examples
+- Respond in ${userLanguage} language only
+- Keep your response clear and concise, under 3000 characters if possible
+- Format your response in a clear, structured way with sections
+`;
+
+      // Get the response from the AI
+      const response = await chatCompletion(
+        prompt,
+        0.7,
+        userId,
+        databaseService
+      );
+
+      // Отправляем ответ, разбивая на части если необходимо
+      await sendSplitMessage({
+        ctx,
+        text: response,
+        keyboard: createTopicStudyMenu(userLang),
+        parseMode: 'HTML'
+      });
+    } catch (error) {
+      console.error('Error evaluating topic study response:', error);
+
+      // Inform the user about the error
+      await ctx.reply(
+        `Error: Unable to evaluate your answer. Please try again.`,
+        { reply_markup: createTopicStudyMenu(userLang) }
+      );
+    }
   }
 }

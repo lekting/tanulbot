@@ -124,6 +124,14 @@ const translations: Record<SupportedLanguage, Record<string, string>> = {
     'menu.language': '🌐 Change language',
     'menu.vocabulary': '📚 My vocabulary',
     'menu.worksheets': '📝 Alphabet Worksheets',
+    'menu.topic_study': '📘 Study a Topic',
+
+    // Topic study
+    'topic_study.intro':
+      'What topic would you like to study? Please enter the name of the topic below:',
+    'topic_study.change': '🔄 Change Topic',
+    'topic_study.back': '⬅️ Back to main menu',
+    'topic_study.waiting': 'Preparing your lesson on "{topic}"... Please wait.',
 
     // Chat management
     'chat.clear': '🗑️ Clear chat history',
@@ -316,6 +324,15 @@ const translations: Record<SupportedLanguage, Record<string, string>> = {
     'menu.language': '🌐 Изменить язык',
     'menu.vocabulary': '📚 Мой словарь',
     'menu.worksheets': '📝 Прописи алфавита',
+    'menu.topic_study': '📘 Изучить тему',
+
+    // Topic study
+    'topic_study.intro':
+      'Какую тему вы хотели бы изучить? Пожалуйста, введите название темы ниже:',
+    'topic_study.change': '🔄 Сменить тему',
+    'topic_study.back': '⬅️ Вернуться в главное меню',
+    'topic_study.waiting':
+      'Подготовка урока по теме "{topic}"... Пожалуйста, подождите.',
 
     // Chat management
     'chat.clear': '🗑️ Очистить историю',

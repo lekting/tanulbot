@@ -24,3 +24,7 @@ export const DIARY_SUMMARY_LIMIT = 100; // Characters to show in chat history su
 // Subscription types
 export const SUBSCRIPTION_BASIC = 'BASIC';
 export const SUBSCRIPTION_PREMIUM = 'PREMIUM';
+
+// Topic study constants
+export const TOPIC_STUDY_CHANGE = 'topic_study.change';
+export const TOPIC_STUDY_BACK = 'topic_study.back';
