@@ -42,23 +42,12 @@ import {
 import { handleWorksheetMenu } from './worksheetHandler';
 import { getUserLang } from '../utils/handlerUtils';
 import {
-  LANG_ENGLISH,
-  LANG_RUSSIAN,
-  FLAG_HUNGARIAN,
-  FLAG_SPANISH,
-  FLAG_FRENCH,
-  FLAG_GERMAN,
-  FLAG_ITALIAN,
-  LEARNING_HUNGARIAN,
-  LEARNING_SPANISH,
-  LEARNING_FRENCH,
-  LEARNING_GERMAN,
-  LEARNING_ITALIAN,
   DIARY_SUMMARY_LIMIT,
   SUBSCRIPTION_BASIC,
   SUBSCRIPTION_PREMIUM,
   TOPIC_STUDY_CHANGE,
-  TOPIC_STUDY_BACK
+  TOPIC_STUDY_BACK,
+  isLanguage
 } from '../constants/messageHandler';
 import { DatabaseService } from '../services/DatabaseService';
 import { sendSplitMessage } from '../utils/message';
@@ -75,7 +64,9 @@ export async function handleTextMessage(ctx: Context): Promise<void> {
   const userId = ctx.from?.id;
   const messageText = ctx.message?.text;
 
-  if (!userId || !messageText) return;
+  if (!userId || !messageText) {
+    return;
+  }
 
   // Get user's language preference
   const userLang = await getUserLang(userId, ctx.from);
@@ -83,7 +74,7 @@ export async function handleTextMessage(ctx: Context): Promise<void> {
   const actions = getKeyboardActions(userLang);
 
   // Handle language selection
-  if (messageText === LANG_ENGLISH) {
+  if (isLanguage(messageText)) {
     store.setUserLanguage(userId, 'en');
     await ctx.reply(t('language.changed', 'en'), {
       reply_markup: createMainMenu('en', learningLang)
@@ -91,7 +82,7 @@ export async function handleTextMessage(ctx: Context): Promise<void> {
     return;
   }
 
-  if (messageText === LANG_RUSSIAN) {
+  if (isLanguage(messageText)) {
     store.setUserLanguage(userId, 'ru');
     await ctx.reply(t('language.changed', 'ru'), {
       reply_markup: createMainMenu('ru', learningLang)
@@ -107,75 +98,28 @@ export async function handleTextMessage(ctx: Context): Promise<void> {
     return;
   }
 
-  // Handle learning language selection
-  if (
-    messageText.startsWith(FLAG_HUNGARIAN) ||
-    messageText === LEARNING_HUNGARIAN
-  ) {
-    store.setUserLearningLanguage(userId, 'hungarian');
-    await ctx.reply(
-      t('learning_language.changed', userLang, {
-        language: LEARNING_HUNGARIAN
-      }),
-      {
-        reply_markup: createMainMenu(userLang, 'hungarian')
-      }
-    );
-    return;
-  }
+  const tempMode = store.getUserTemporaryData(userId, 'tempMode');
 
-  if (
-    messageText.startsWith(FLAG_SPANISH) ||
-    messageText === LEARNING_SPANISH
-  ) {
-    store.setUserLearningLanguage(userId, 'spanish');
-    await ctx.reply(
-      t('learning_language.changed', userLang, { language: LEARNING_SPANISH }),
-      {
-        reply_markup: createMainMenu(userLang, 'spanish')
-      }
-    );
-    return;
-  }
-
-  if (messageText.startsWith(FLAG_FRENCH) || messageText === LEARNING_FRENCH) {
-    store.setUserLearningLanguage(userId, 'french');
-    await ctx.reply(
-      t('learning_language.changed', userLang, { language: LEARNING_FRENCH }),
-      {
-        reply_markup: createMainMenu(userLang, 'french')
-      }
-    );
-    return;
-  }
-
-  if (messageText.startsWith(FLAG_GERMAN) || messageText === LEARNING_GERMAN) {
-    store.setUserLearningLanguage(userId, 'german');
-    await ctx.reply(
-      t('learning_language.changed', userLang, { language: LEARNING_GERMAN }),
-      {
-        reply_markup: createMainMenu(userLang, 'german')
-      }
-    );
-    return;
-  }
-
-  if (
-    messageText.startsWith(FLAG_ITALIAN) ||
-    messageText === LEARNING_ITALIAN
-  ) {
-    store.setUserLearningLanguage(userId, 'italian');
-    await ctx.reply(
-      t('learning_language.changed', userLang, { language: LEARNING_ITALIAN }),
-      {
-        reply_markup: createMainMenu(userLang, 'italian')
-      }
-    );
-    return;
+  if (tempMode === 'selecting_language') {
+    if (isLanguage(messageText, true)) {
+      const selectedLang = messageText as SupportedLearningLanguage;
+      store.setUserLearningLanguage(userId, selectedLang);
+      store.setUserTemporaryData(userId, 'tempMode', null);
+      await ctx.reply(
+        t('learning_language.changed', userLang, {
+          language: selectedLang
+        }),
+        {
+          reply_markup: createMainMenu(userLang, selectedLang)
+        }
+      );
+      return;
+    }
   }
 
   // Handle learning language menu request
   if (messageText === actions.CHANGE_LEARNING_LANGUAGE) {
+    store.setUserTemporaryData(userId, 'tempMode', 'selecting_language');
     await ctx.reply(t('learning_language.select', userLang), {
       reply_markup: createLearningLanguageMenu()
     });
@@ -269,6 +213,14 @@ export async function handleTextMessage(ctx: Context): Promise<void> {
       console.log(
         `Starting Anki deck creation for user ${userId} with ${entries.length} entries`
       );
+
+      // Validate userId is a valid integer
+      if (isNaN(userId) || !Number.isInteger(userId)) {
+        throw new Error(
+          `Invalid user ID: ${userId}. User ID must be a valid integer.`
+        );
+      }
+
       const ankiDeck = await createAnkiDeck(entries, userId);
       console.log(`Anki deck created successfully: ${ankiDeck.filePath}`);
 
@@ -403,6 +355,7 @@ export async function handleTextMessage(ctx: Context): Promise<void> {
   if (messageText === actions.BACK_TO_MENU) {
     // Reset user mode to default
     store.setUserMode(userId, UserMode.DEFAULT);
+    store.setUserTemporaryData(userId, 'tempMode', null);
     // Also disable diary mode if the user was in diary mode
     store.setUserDiaryMode(userId, false);
 

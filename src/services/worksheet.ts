@@ -39,9 +39,9 @@ const FONTS = {
 };
 
 // Alphabet data by language
-const ALPHABETS: Record<
+export const ALPHABETS: Record<
   SupportedLearningLanguage,
-  { letters: string[]; specialCharacters?: string[] }
+  { letters: string[]; specialCharacters?: string[]; noUppercase?: boolean }
 > = {
   hungarian: {
     letters: [
@@ -368,7 +368,8 @@ export async function generateWorksheet(
       break;
   }
 
-  if (opts.letterCase === 'lowercase') {
+  // Force lowercase for languages that don't use uppercase
+  if (alphabet.noUppercase || opts.letterCase === 'lowercase') {
     letters = letters.map((l) => l.toLowerCase());
   }
 
@@ -416,10 +417,13 @@ export async function generateWorksheet(
     .font('Helvetica')
     .fontSize(14)
     .text('Practice tracing these letters:', { align: 'center' });
-  const displayLetters =
-    opts.letterCase === 'both'
-      ? letters.map((l) => `${l.toUpperCase()}${l.toLowerCase()}`).join(' ')
-      : letters.join(' ');
+
+  // For display letters, respect noUppercase setting
+  const displayLetters = alphabet.noUppercase
+    ? letters.join(' ')
+    : opts.letterCase === 'both'
+    ? letters.map((l) => `${l.toUpperCase()}${l.toLowerCase()}`).join(' ')
+    : letters.join(' ');
 
   // Get the best font for this language
   const fontName = getBestFont(opts.fontStyle, opts.language, opts.fontName);
@@ -459,7 +463,9 @@ export async function generateWorksheet(
   for (let row = 0; row < rows; row++) {
     for (let col = 0; col < cols; col++) {
       let currentLetter = letters[letterIndex % letters.length];
-      if (opts.letterCase === 'both') {
+
+      // Handle case based on noUppercase setting
+      if (!alphabet.noUppercase && opts.letterCase === 'both') {
         currentLetter =
           letterIndex % 2 === 0
             ? currentLetter.toUpperCase()
@@ -490,12 +496,13 @@ export async function generateWorksheet(
   const footerY = startY + rows * cellSize + 10;
   if (footerY + footerHeight <= doc.page.height - marginBottom) {
     doc.fillOpacity(1).fontSize(10).fillColor('#555555');
-    doc.text(
-      `${opts.language.toUpperCase()} - ${worksheetType} Practice`,
-      0,
-      footerY,
-      { align: 'center' }
-    );
+
+    // Adjust footer text based on whether language has uppercase
+    const footerText = alphabet.noUppercase
+      ? `${opts.language.toUpperCase()} - Letter: ${letters[0].toLowerCase()}`
+      : `${opts.language.toUpperCase()} - ${worksheetType} Practice`;
+
+    doc.text(footerText, 0, footerY, { align: 'center' });
   }
 
   doc.end();
@@ -522,6 +529,7 @@ export async function generateAlphabetWorkbook(
 
   // Get the best font for this language
   const bestFontName = getBestFont(fontStyle, language, fontName);
+  const alphabet = ALPHABETS[language];
 
   const stream = fs.createWriteStream(filePath);
   doc.pipe(stream);
@@ -530,8 +538,6 @@ export async function generateAlphabetWorkbook(
     language.charAt(0).toUpperCase() + language.slice(1)
   } Alphabet Workbook`;
   doc.info.Author = 'TanulBot';
-
-  const alphabet = ALPHABETS[language];
 
   doc.addPage();
   doc
@@ -551,11 +557,20 @@ export async function generateAlphabetWorkbook(
       { align: 'center' }
     );
   doc.fontSize(12).text('How to use this workbook:', { align: 'left' });
-  doc
-    .fontSize(10)
-    .text('1. Practice uppercase and lowercase letters on each page.', {
+
+  // Adjust instructions based on whether the language has uppercase letters
+  if (alphabet.noUppercase) {
+    doc.fontSize(10).text('1. Practice each letter on its dedicated page.', {
       indent: 20
     });
+  } else {
+    doc
+      .fontSize(10)
+      .text('1. Practice uppercase and lowercase letters on each page.', {
+        indent: 20
+      });
+  }
+
   doc.text('2. Trace over the gray letters to learn correct shape.', {
     indent: 20
   });
@@ -566,13 +581,16 @@ export async function generateAlphabetWorkbook(
   for (const letter of alphabet.letters) {
     doc.addPage();
 
+    // For languages without uppercase, just show the lowercase letter
+    // Otherwise show both uppercase and lowercase
+    const displayText = alphabet.noUppercase
+      ? letter.toLowerCase()
+      : `${letter.toUpperCase()} ${letter.toLowerCase()}`;
+
     // Use the best font for this language
-    doc
-      .font(bestFontName)
-      .fontSize(60)
-      .text(`${letter.toUpperCase()} ${letter.toLowerCase()}`, 0, 70, {
-        align: 'center'
-      });
+    doc.font(bestFontName).fontSize(60).text(displayText, 0, 70, {
+      align: 'center'
+    });
 
     const startY = Math.max(doc.y + 20, 150);
     const gridWidth = doc.page.width - 100;
@@ -602,8 +620,11 @@ export async function generateAlphabetWorkbook(
     const letterSize = 20;
     for (let row = 0; row < rows; row++) {
       for (let col = 0; col < cols; col++) {
-        const isUpper = (row + col) % 2 === 0;
-        const currentLetter = isUpper
+        // For languages with no uppercase, always use lowercase
+        // Otherwise alternate between upper and lowercase
+        const currentLetter = alphabet.noUppercase
+          ? letter.toLowerCase()
+          : (row + col) % 2 === 0
           ? letter.toUpperCase()
           : letter.toLowerCase();
 
@@ -630,12 +651,13 @@ export async function generateAlphabetWorkbook(
     const footerY = startY + rows * cellSize + 10;
     if (footerY + footerHeight <= doc.page.height - marginBottom) {
       doc.fillOpacity(1).fontSize(10).fillColor('#555555');
-      doc.text(
-        `${language.toUpperCase()} - Letter: ${letter.toUpperCase()}/${letter.toLowerCase()}`,
-        0,
-        footerY,
-        { align: 'center' }
-      );
+
+      // Adjust footer text based on whether language has uppercase
+      const footerText = alphabet.noUppercase
+        ? `${language.toUpperCase()} - Letter: ${letter.toLowerCase()}`
+        : `${language.toUpperCase()} - Letter: ${letter.toUpperCase()}/${letter.toLowerCase()}`;
+
+      doc.text(footerText, 0, footerY, { align: 'center' });
     }
   }
 

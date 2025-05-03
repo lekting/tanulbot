@@ -1,7 +1,7 @@
 {
   "name": "tanulbot",
   "version": "1.0.0",
-  "description": "Telegram bot for learning Hungarian",
+  "description": "Telegram bot for learning Languages",
   "main": "src/index.ts",
   "scripts": {
     "start": "ts-node src/index.ts",

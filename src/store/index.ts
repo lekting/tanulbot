@@ -373,6 +373,7 @@ export class StateStore {
         : [];
 
       return {
+        telegramId: entry.telegramId,
         originalText: entry.text,
         correctedText: entry.correctedText || '',
         improvements: entry.improvements || [],

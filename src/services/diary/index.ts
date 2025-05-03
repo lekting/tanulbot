@@ -90,6 +90,7 @@ Format as valid JSON.`;
     }));
 
     return {
+      telegramId: entry.telegramId,
       originalText: entry.text,
       correctedText: result.correctedText,
       improvements: result.improvements,
@@ -115,6 +116,11 @@ export async function createAnkiDeck(
   userId: number;
   filePath?: string;
 }> {
+  // Validate userId is a proper number
+  if (isNaN(userId) || !Number.isInteger(userId)) {
+    throw new Error(`Invalid user ID: ${userId}`);
+  }
+
   // Get the user's learning language
   const learningLanguage = await store.getUserLearningLanguage(userId);
   const languageName = LEARNING_LANGUAGE_TO_NAME[learningLanguage];
@@ -198,9 +204,7 @@ export async function generateLearningSuggestions(
   language: SupportedLanguage
 ): Promise<string[]> {
   // Get learning language from the first entry's user ID
-  const userId = entries[0]?.originalText
-    ? parseInt(entries[0].originalText)
-    : 0;
+  const userId = entries[0]?.telegramId;
   const learningLanguage = await store.getUserLearningLanguage(userId);
   const languageName = LEARNING_LANGUAGE_TO_NAME[learningLanguage];
 
@@ -224,6 +228,7 @@ ${wordList}
 
 Provide tips for effective memorization, usage patterns, or common mistakes to avoid.
 Keep each tip brief (1-2 sentences).
+SEND ONLY THE TIPS, NO OTHER TEXT.
 `;
 
   try {

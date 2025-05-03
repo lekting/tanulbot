@@ -22,6 +22,9 @@ import {
 } from '../constants/worksheetHandler';
 import { getUserLang } from '../utils/handlerUtils';
 
+// Import ALPHABETS to check if language supports uppercase
+import { ALPHABETS } from '../services/worksheet';
+
 /**
  * Handle worksheet menu action
  * @param ctx - Telegram context
@@ -83,6 +86,9 @@ export async function handleWorksheetCallback(ctx: Context): Promise<void> {
   const learningLanguage = await store.getUserLearningLanguage(userId);
   const data = ctx.callbackQuery.data;
 
+  // Check if the language has uppercase letters
+  const hasNoUppercase = ALPHABETS[learningLanguage]?.noUppercase === true;
+
   // Handle worksheet type selection
   if (data.startsWith(CALLBACK_WORKSHEET_TYPE)) {
     const type = data.replace(CALLBACK_WORKSHEET_TYPE, '') as WorksheetType;
@@ -90,7 +96,34 @@ export async function handleWorksheetCallback(ctx: Context): Promise<void> {
     // Save the selected type in temporary storage
     store.setUserTemporaryData(userId, 'worksheetType', type);
 
-    // Show letter case options
+    // If language doesn't have uppercase letters, skip case selection and set to lowercase
+    if (hasNoUppercase) {
+      store.setUserTemporaryData(userId, 'worksheetLetterCase', 'lowercase');
+
+      // Show font size options instead
+      const keyboard = new InlineKeyboard()
+        .text(
+          t('worksheet.size.small', userLang),
+          `${CALLBACK_WORKSHEET_SIZE}small`
+        )
+        .row()
+        .text(
+          t('worksheet.size.medium', userLang),
+          `${CALLBACK_WORKSHEET_SIZE}medium`
+        )
+        .row()
+        .text(
+          t('worksheet.size.large', userLang),
+          `${CALLBACK_WORKSHEET_SIZE}large`
+        );
+
+      await ctx.editMessageText(t('worksheet.select_size', userLang), {
+        reply_markup: keyboard
+      });
+      return;
+    }
+
+    // Show letter case options (only for languages with uppercase)
     const keyboard = new InlineKeyboard()
       .text(
         t('worksheet.case.uppercase', userLang),

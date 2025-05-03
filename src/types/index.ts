@@ -103,6 +103,7 @@ export interface DiaryEntry {
  * Structure for processed diary entry
  */
 export interface ProcessedDiaryEntry {
+  telegramId: number;
   originalText: string;
   correctedText: string;
   improvements: string[];

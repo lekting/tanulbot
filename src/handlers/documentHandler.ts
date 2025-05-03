@@ -369,6 +369,13 @@ async function processExtractedText(
     // Store word pairs for future use
     store.setLastWordPairs(allWordPairs);
 
+    // Validate userId is a valid integer
+    if (isNaN(userId) || !Number.isInteger(userId)) {
+      throw new Error(
+        `Invalid user ID: ${userId}. User ID must be a valid integer.`
+      );
+    }
+
     const userDir = await ensureUserDir(userId);
     const deckName = `Hungarian Vocabulary - ${new Date().toLocaleDateString()}`;
     const buffer = await createAnkiDeck(deckName, allWordPairs, userId);

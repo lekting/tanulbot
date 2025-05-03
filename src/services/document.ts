@@ -291,6 +291,14 @@ export async function createAnkiDeck(
 
     // We'll use a Python script with genanki instead of the problematic JS library
 
+    // Validate userId if provided
+    if (userId !== undefined && (isNaN(userId) || !Number.isInteger(userId))) {
+      console.warn(
+        `Invalid user ID: ${userId}, using temporary directory instead`
+      );
+      userId = undefined;
+    }
+
     // Create a temporary JSON file with the word pairs
     const targetDir = userId ? await ensureUserDir(userId) : TMP_DIR;
     const wordsJsonPath = path.join(targetDir, 'word_pairs.json');
