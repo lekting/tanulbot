@@ -66,6 +66,7 @@ The database includes the following tables:
 4. `diary_entries` - Stores user diary entries
 5. `invoices` - Stores subscription information
 6. `llm_requests` - Logs AI model usage
+7. `topic_study_responses` - Caches LLM responses for topic study mode
 
 ## Backup and Restore
 
@@ -76,7 +77,7 @@ The database includes the following tables:
 mysqldump -u tanulbot_user -p tanulbot > tanulbot_backup.sql
 
 # For MariaDB
-mariadb-dump -u tanulbot_user -p tanulbot > tanulbot_backup.sql
+mariadb-dump -u tanulbot_user -p tanulbot < tanulbot_backup.sql
 ```
 
 ### Restoring from Backup
@@ -87,6 +88,19 @@ mysql -u tanulbot_user -p tanulbot < tanulbot_backup.sql
 
 # For MariaDB
 mariadb -u tanulbot_user -p tanulbot < tanulbot_backup.sql
+```
+
+## Maintenance Tasks
+
+TanulBot includes a maintenance worker that automatically performs these tasks:
+
+1. **Clearing old topic study responses** - Automatically removes cached responses older than 30 days to keep the database size in check
+
+To run maintenance tasks manually:
+
+```bash
+# In Node.js application code
+await databaseService.clearOldTopicStudyResponses();
 ```
 
 ## Troubleshooting
@@ -125,3 +139,4 @@ For improved performance:
 2. Consider using connection pooling
 3. Optimize queries for large datasets
 4. Consider regular database maintenance (vacuum, analyze)
+5. Utilize the caching system for LLM responses to reduce API costs

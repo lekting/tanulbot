@@ -49,17 +49,6 @@ DB_PASSWORD=your_secure_password
 pnpm migrate
 ```
 
-### Database Schema
-
-The database contains the following tables:
-
-- `users` - User information and preferences
-- `chat_messages` - Chat history between users and the bot
-- `invoices` - Payment and subscription information
-- `llm_requests` - Tracking of LLM API usage and costs
-- `vocabulary_entries` - User vocabulary words and learning progress
-- `diary_entries` - User diary entries and corrections
-
 ### Migrating Existing Data
 
 If you're upgrading from an older version of TanulBot that used in-memory storage, you can migrate existing data to MySQL:
