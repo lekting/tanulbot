@@ -7,3 +7,4 @@ export * from './InvoiceRepository';
 export * from './LlmRequestRepository';
 export * from './VocabularyRepository';
 export * from './DiaryRepository';
+export * from './TopicStudyResponseRepository';

@@ -41,6 +41,12 @@ export const KEYBOARD_IDS = {
   TOPIC_STUDY_CHANGE: 'topic_study.change',
   TOPIC_STUDY_BACK: 'topic_study.back',
 
+  // Diary menu
+  DIARY_MENU: 'menu.diary',
+  DIARY_VIEW: 'menu.diary.view',
+  DIARY_CLEAR: 'menu.diary.clear',
+  DIARY_START: 'menu.diary.start',
+
   // Subscription actions
   SUBSCRIPTION_STATUS: 'subscription.status',
   SUBSCRIPTION_PLANS: 'subscription.plans',
@@ -85,29 +91,35 @@ export function createMainMenu(
 ): Keyboard {
   const actions = getKeyboardActions(language, learningLanguage);
 
-  return new Keyboard()
-    .text(actions.PRACTICE_LANGUAGE)
-    .row()
-    .text(actions.START_DICTATION)
-    .row()
-    .text(actions.TOPIC_STUDY)
-    .row()
-    .text(actions.WRITE_DIARY)
-    .text(actions.GENERATE_ANKI)
-    .row()
-    .text(actions.WORKSHEETS)
-    .row()
-    .text(actions.MY_ACHIEVEMENTS)
-    .text(actions.VIEW_VOCABULARY)
-    .row()
-    .text(actions.VIEW_CHAT)
-    .text(actions.CLEAR_CHAT)
-    .row()
-    .text(actions.SUBSCRIPTION_STATUS)
-    .row()
-    .text(actions.CHANGE_LEARNING_LANGUAGE)
-    .text(`🌐 ${language.toUpperCase()}`)
-    .resized();
+  return (
+    new Keyboard()
+      // Primary learning features
+      .text(actions.PRACTICE_LANGUAGE)
+      .text(actions.TOPIC_STUDY)
+      .row()
+      .text(actions.START_DICTATION)
+      .text(actions.DIARY_MENU)
+      .row()
+
+      // Secondary features
+      .text(actions.WORKSHEETS)
+      .text(actions.VIEW_VOCABULARY)
+      .row()
+      .text(actions.MY_ACHIEVEMENTS)
+      .row()
+
+      // Chat management
+      .text(actions.VIEW_CHAT)
+      .text(actions.CLEAR_CHAT)
+      .row()
+
+      // Settings
+      .text(actions.SUBSCRIPTION_STATUS)
+      .row()
+      .text(actions.CHANGE_LEARNING_LANGUAGE)
+      .text(`🌐 ${language.toUpperCase()}`)
+      .resized()
+  );
 }
 
 /**
@@ -159,7 +171,7 @@ export function createDictationMenu(language: SupportedLanguage): Keyboard {
 }
 
 /**
- * Create diary mode keyboard
+ * Create diary menu keyboard
  * @param language - User language
  */
 export function createDiaryMenu(language: SupportedLanguage): Keyboard {
@@ -167,6 +179,26 @@ export function createDiaryMenu(language: SupportedLanguage): Keyboard {
 
   return new Keyboard()
     .text(actions.STOP_DIARY)
+    .row()
+    .text(actions.BACK_TO_MENU)
+    .resized();
+}
+
+/**
+ * Create diary menu keyboard with all options
+ * @param language - User language
+ */
+export function createDiaryMainMenu(language: SupportedLanguage): Keyboard {
+  const actions = getKeyboardActions(language);
+
+  return new Keyboard()
+    .text(actions.DIARY_VIEW)
+    .row()
+    .text(actions.DIARY_START)
+    .row()
+    .text(actions.GENERATE_ANKI)
+    .row()
+    .text(actions.DIARY_CLEAR)
     .row()
     .text(actions.BACK_TO_MENU)
     .resized();

@@ -125,6 +125,10 @@ const translations: Record<SupportedLanguage, Record<string, string>> = {
     'menu.vocabulary': '📚 My vocabulary',
     'menu.worksheets': '📝 Alphabet Worksheets',
     'menu.topic_study': '📘 Study a Topic',
+    'menu.diary': '📒 Diary',
+    'menu.diary.view': '📖 My Diary',
+    'menu.diary.clear': '🗑️ Clear Diary',
+    'menu.diary.start': '✏️ Start Writing',
 
     // Topic study
     'topic_study.intro':
@@ -209,6 +213,12 @@ const translations: Record<SupportedLanguage, Record<string, string>> = {
     'diary.mnemonics': 'Mnemonic tips for new words:\n\n{mnemonics}',
     'diary.pronunciation': '🔊 Pronunciation: {pronunciation}',
     'diary.example': '💬 Example: {example}',
+    'diary.page': '📄 Page {current}/{total}',
+    'diary.empty': 'Your diary is empty. Start writing to add entries!',
+    'diary.entry_date': '📆 {date}',
+    'diary.entries_cleared': 'Diary entries have been cleared.',
+    'diary.prev_page': '⬅️ Previous',
+    'diary.next_page': '➡️ Next',
 
     // Dictation messages
     'dictation.start': '🎧 Listen and write! Starting dictation!',
@@ -325,6 +335,10 @@ const translations: Record<SupportedLanguage, Record<string, string>> = {
     'menu.vocabulary': '📚 Мой словарь',
     'menu.worksheets': '📝 Прописи алфавита',
     'menu.topic_study': '📘 Изучить тему',
+    'menu.diary': '📒 Дневник',
+    'menu.diary.view': '📖 Мой дневник',
+    'menu.diary.clear': '🗑️ Очистить дневник',
+    'menu.diary.start': '✏️ Начать запись',
 
     // Topic study
     'topic_study.intro':
@@ -409,6 +423,12 @@ const translations: Record<SupportedLanguage, Record<string, string>> = {
     'diary.mnemonics': 'Мнемонические подсказки для новых слов:\n\n{mnemonics}',
     'diary.pronunciation': '🔊 Произношение: {pronunciation}',
     'diary.example': '💬 Пример: {example}',
+    'diary.page': '📄 Страница {current}/{total}',
+    'diary.empty': 'Ваш дневник пуст. Начните писать, чтобы добавить записи!',
+    'diary.entry_date': '📆 {date}',
+    'diary.entries_cleared': 'Записи дневника были очищены.',
+    'diary.prev_page': '⬅️ Предыдущая',
+    'diary.next_page': '➡️ Следующая',
 
     // Dictation messages
     'dictation.start': '🎧 Слушайте и пишите! Начинаем диктант!',

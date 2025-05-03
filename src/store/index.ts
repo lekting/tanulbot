@@ -320,6 +320,26 @@ export class StateStore {
   }
 
   /**
+   * Clear all diary entries for a user
+   */
+  async clearUserDiaryEntries(userId: number): Promise<boolean> {
+    try {
+      // Get all entries for the user
+      const entries = await this.dbService.getUserDiaryEntries(userId);
+
+      // Delete each entry
+      for (const entry of entries) {
+        await this.dbService.deleteDiaryEntry(entry.id);
+      }
+
+      return true;
+    } catch (error) {
+      console.error(`Error clearing diary entries for user ${userId}:`, error);
+      return false;
+    }
+  }
+
+  /**
    * Add processed diary entry
    */
   async addProcessedDiaryEntry(

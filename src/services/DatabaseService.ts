@@ -4,6 +4,7 @@ import { Invoice } from '../entity/Invoice';
 import { LlmRequest } from '../entity/LlmRequest';
 import { VocabularyEntry } from '../entity/VocabularyEntry';
 import { DiaryEntry } from '../entity/DiaryEntry';
+import { TopicStudyResponse } from '../entity/TopicStudyResponse';
 import { SupportedLanguage, SupportedLearningLanguage } from './i18n';
 import {
   UserRepository,
@@ -11,7 +12,8 @@ import {
   InvoiceRepository,
   LlmRequestRepository,
   VocabularyRepository,
-  DiaryRepository
+  DiaryRepository,
+  TopicStudyResponseRepository
 } from '../store/repositories';
 import { UserMode } from '../types';
 
@@ -25,6 +27,7 @@ export class DatabaseService {
   private llmRequestRepository: LlmRequestRepository;
   private vocabularyRepository: VocabularyRepository;
   private diaryRepository: DiaryRepository;
+  private topicStudyResponseRepository: TopicStudyResponseRepository;
 
   constructor() {
     this.userRepository = new UserRepository();
@@ -33,6 +36,7 @@ export class DatabaseService {
     this.llmRequestRepository = new LlmRequestRepository();
     this.vocabularyRepository = new VocabularyRepository();
     this.diaryRepository = new DiaryRepository();
+    this.topicStudyResponseRepository = new TopicStudyResponseRepository();
   }
 
   /**
@@ -437,5 +441,54 @@ export class DatabaseService {
     if (!user) return 0;
 
     return this.diaryRepository.countUserEntries(user.telegramId);
+  }
+
+  /**
+   * Find topic study response by text and learning language
+   */
+  async findTopicStudyResponse(
+    text: string,
+    learningLanguage: SupportedLearningLanguage
+  ): Promise<TopicStudyResponse | null> {
+    return this.topicStudyResponseRepository.findByTextAndLanguage(
+      text,
+      learningLanguage
+    );
+  }
+
+  /**
+   * Save topic study response
+   */
+  async saveTopicStudyResponse(
+    telegramId: number,
+    text: string,
+    response: string,
+    learningLanguage: SupportedLearningLanguage
+  ): Promise<TopicStudyResponse | null> {
+    const user = await this.userRepository.findByTelegramId(telegramId);
+    if (!user) return null;
+
+    return this.topicStudyResponseRepository.create({
+      user,
+      text,
+      response,
+      learningLanguage
+    });
+  }
+
+  /**
+   * Get topic study responses for a user
+   */
+  async getUserTopicStudyResponses(
+    telegramId: number
+  ): Promise<TopicStudyResponse[]> {
+    return this.topicStudyResponseRepository.getUserResponses(telegramId);
+  }
+
+  /**
+   * Clear old topic study responses (can be used in a maintenance worker)
+   */
+  async clearOldTopicStudyResponses(): Promise<void> {
+    await this.topicStudyResponseRepository.clearOldResponses();
   }
 }

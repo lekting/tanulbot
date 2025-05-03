@@ -1,8 +1,9 @@
-import { Context, InputFile } from 'grammy';
+import { Context, InputFile, Keyboard } from 'grammy';
 import {
   createMainMenu,
   createDifficultyMenu,
   createDiaryMenu,
+  createDiaryMainMenu,
   getKeyboardActions,
   createLanguageMenu,
   createDictationMenu,
@@ -126,8 +127,118 @@ export async function handleTextMessage(ctx: Context): Promise<void> {
     return;
   }
 
-  // Handle diary mode
-  if (messageText === actions.WRITE_DIARY) {
+  // Handle diary main menu request
+  if (messageText === actions.DIARY_MENU) {
+    await ctx.reply(t('general.choose_action', userLang), {
+      reply_markup: createDiaryMainMenu(userLang)
+    });
+    return;
+  }
+
+  // Handler for viewing diary entries with pagination
+  if (messageText === actions.DIARY_VIEW) {
+    const entries = await store.getUserDiaryEntries(userId);
+
+    if (entries.length === 0) {
+      await ctx.reply(t('diary.empty', userLang), {
+        reply_markup: createDiaryMainMenu(userLang)
+      });
+      return;
+    }
+
+    // Get current page from temporary data or default to 1
+    const currentPage = store.getUserTemporaryData(userId, 'diaryPage') || 1;
+    const entriesPerPage = 3; // Number of entries to show per page
+    const totalPages = Math.ceil(entries.length / entriesPerPage);
+
+    // Calculate entries to display for current page
+    const startIndex = (currentPage - 1) * entriesPerPage;
+    const endIndex = Math.min(startIndex + entriesPerPage, entries.length);
+    const pageEntries = entries.slice(startIndex, endIndex);
+
+    // Format entries for display
+    const formattedEntries = pageEntries
+      .map((entry, index) => {
+        const entryDate = new Date(entry.date).toLocaleDateString();
+        return `${startIndex + index + 1}. ${t('diary.entry_date', userLang, {
+          date: entryDate
+        })}\n${entry.text}`;
+      })
+      .join('\n\n');
+
+    // Create navigation keyboard
+    const paginationKeyboard = new Keyboard();
+
+    if (currentPage > 1) {
+      paginationKeyboard.text(t('diary.prev_page', userLang));
+    }
+
+    if (currentPage < totalPages) {
+      paginationKeyboard.text(t('diary.next_page', userLang));
+    }
+
+    paginationKeyboard.row().text(actions.BACK_TO_MENU).resized();
+
+    // Send the message with pagination info
+    await ctx.reply(
+      `${t('diary.page', userLang, {
+        current: currentPage,
+        total: totalPages
+      })}\n\n${formattedEntries}`,
+      { reply_markup: paginationKeyboard }
+    );
+    return;
+  }
+
+  // Handle diary pagination
+  if (messageText === t('diary.prev_page', userLang)) {
+    const currentPage = store.getUserTemporaryData(userId, 'diaryPage') || 1;
+    if (currentPage > 1) {
+      store.setUserTemporaryData(userId, 'diaryPage', currentPage - 1);
+      // Reuse the DIARY_VIEW handler by setting the messageText
+      // This is a bit hacky but avoids duplicating code
+      return handleTextMessage({
+        ...ctx,
+        message: { ...ctx.message, text: actions.DIARY_VIEW }
+      } as Context);
+    }
+  }
+
+  if (messageText === t('diary.next_page', userLang)) {
+    const currentPage = store.getUserTemporaryData(userId, 'diaryPage') || 1;
+    const entries = await store.getUserDiaryEntries(userId);
+    const entriesPerPage = 3;
+    const totalPages = Math.ceil(entries.length / entriesPerPage);
+
+    if (currentPage < totalPages) {
+      store.setUserTemporaryData(userId, 'diaryPage', currentPage + 1);
+      return handleTextMessage({
+        ...ctx,
+        message: { ...ctx.message, text: actions.DIARY_VIEW }
+      } as Context);
+    }
+  }
+
+  // Handle diary clearing
+  if (messageText === actions.DIARY_CLEAR) {
+    const success = await store.clearUserDiaryEntries(userId);
+    if (success) {
+      await ctx.reply(t('diary.entries_cleared', userLang), {
+        reply_markup: createDiaryMainMenu(userLang)
+      });
+    } else {
+      await ctx.reply('Error clearing diary entries.', {
+        reply_markup: createDiaryMainMenu(userLang)
+      });
+    }
+    return;
+  }
+
+  // Handle starting diary writing
+  if (
+    messageText === actions.DIARY_START ||
+    messageText === actions.WRITE_DIARY
+  ) {
     store.setUserDiaryMode(userId, true);
     await ctx.reply(t('diary.activated', userLang), {
       reply_markup: createDiaryMenu(userLang)
@@ -135,10 +246,11 @@ export async function handleTextMessage(ctx: Context): Promise<void> {
     return;
   }
 
+  // Handle existing diary stop action
   if (messageText === actions.STOP_DIARY) {
     store.setUserDiaryMode(userId, false);
     await ctx.reply(t('diary.saved', userLang), {
-      reply_markup: createMainMenu(userLang)
+      reply_markup: createDiaryMainMenu(userLang)
     });
 
     const entries = await store.getUserDiaryEntries(userId);
@@ -153,7 +265,7 @@ export async function handleTextMessage(ctx: Context): Promise<void> {
           text: processed.correctedText,
           suggestions: processed.improvements.join('\n')
         }),
-        { reply_markup: createMainMenu(userLang) }
+        { reply_markup: createDiaryMainMenu(userLang) }
       );
 
       // Format mnemonics with additional information
@@ -181,7 +293,7 @@ export async function handleTextMessage(ctx: Context): Promise<void> {
           t('diary.mnemonics', userLang, {
             mnemonics: mnemonicMessages.join('\n\n')
           }),
-          { parse_mode: 'HTML', reply_markup: createMainMenu(userLang) }
+          { parse_mode: 'HTML', reply_markup: createDiaryMainMenu(userLang) }
         );
       }
 
@@ -190,7 +302,7 @@ export async function handleTextMessage(ctx: Context): Promise<void> {
     }
 
     await ctx.reply(t('general.choose_action', userLang), {
-      reply_markup: createMainMenu(userLang)
+      reply_markup: createDiaryMainMenu(userLang)
     });
     return;
   }
@@ -199,14 +311,14 @@ export async function handleTextMessage(ctx: Context): Promise<void> {
     const entries = await store.getUserProcessedDiaryEntries(userId);
     if (entries.length === 0) {
       await ctx.reply(t('anki.need_diary', userLang), {
-        reply_markup: createMainMenu(userLang)
+        reply_markup: createDiaryMainMenu(userLang)
       });
       return;
     }
 
     // Show processing message
     await ctx.reply(t('anki.creating', userLang), {
-      reply_markup: createMainMenu(userLang)
+      reply_markup: createDiaryMainMenu(userLang)
     });
 
     try {
@@ -223,8 +335,6 @@ export async function handleTextMessage(ctx: Context): Promise<void> {
 
       const ankiDeck = await createAnkiDeck(entries, userId);
       console.log(`Anki deck created successfully: ${ankiDeck.filePath}`);
-
-      const suggestions = await generateLearningSuggestions(entries, userLang);
 
       // First send the Anki deck file if available
       if (ankiDeck.filePath) {
@@ -257,7 +367,7 @@ export async function handleTextMessage(ctx: Context): Promise<void> {
             t('anki.error', userLang, {
               message: `Error sending the Anki deck file: ${errorDetails}`
             }),
-            { reply_markup: createMainMenu(userLang) }
+            { reply_markup: createDiaryMainMenu(userLang) }
           );
         }
       } else {
@@ -267,7 +377,7 @@ export async function handleTextMessage(ctx: Context): Promise<void> {
             message:
               'Anki deck was created but the file is not available for download.'
           }),
-          { reply_markup: createMainMenu(userLang) }
+          { reply_markup: createDiaryMainMenu(userLang) }
         );
       }
 
@@ -276,9 +386,11 @@ export async function handleTextMessage(ctx: Context): Promise<void> {
         t('anki.created', userLang, {
           name: ankiDeck.name,
           count: String(ankiDeck.words.length),
-          recommendations: suggestions.join('\n')
+          recommendations: entries
+            .map((entry) => entry.improvements.join('\n'))
+            .join('\n')
         }),
-        { reply_markup: createMainMenu(userLang) }
+        { reply_markup: createDiaryMainMenu(userLang) }
       );
     } catch (error) {
       console.error('Error creating Anki deck:', error);
@@ -290,29 +402,19 @@ export async function handleTextMessage(ctx: Context): Promise<void> {
       }
 
       await ctx.reply(t('anki.error', userLang, { message: errorMessage }), {
-        reply_markup: createMainMenu(userLang)
+        reply_markup: createDiaryMainMenu(userLang)
       });
     }
     return;
   }
 
-  // Handle topic study menu option
-  if (messageText === actions.TOPIC_STUDY) {
-    // Set user mode to topic study
-    await store.setUserMode(userId, UserMode.TOPIC_STUDY);
-
-    // Ask the user what topic they want to study
-    await ctx.reply(t('topic_study.intro', userLang), {
-      reply_markup: createMainMenu(userLang, learningLang)
-    });
-    return;
-  }
-
   // Handle topic study change request
   if (
+    messageText === actions.TOPIC_STUDY ||
     messageText === actions.TOPIC_STUDY_CHANGE ||
     messageText === TOPIC_STUDY_CHANGE
   ) {
+    await store.setUserMode(userId, UserMode.TOPIC_STUDY);
     // Keep the user in topic study mode but reset their topic
     store.clearUserTemporaryData(userId, 'currentTopic');
 
@@ -786,8 +888,27 @@ async function handleTopicStudy(
       { reply_markup: createTopicStudyMenu(userLang) }
     );
 
-    // Generate the lesson using ChatGPT
     try {
+      // First check if we already have a cached response for this topic and language
+      const cachedResponse = await databaseService.findTopicStudyResponse(
+        messageText,
+        learningLang
+      );
+
+      // If we have a cached response, use it
+      if (cachedResponse) {
+        console.log(`Using cached response for topic: ${messageText}`);
+
+        await sendSplitMessage({
+          ctx,
+          text: cachedResponse.response,
+          keyboard: createTopicStudyMenu(userLang),
+          parseMode: 'HTML'
+        });
+        return;
+      }
+
+      // If no cached response, generate a new one
       const prompt = `You're the best ${LEARNING_LANGUAGE_TO_NAME[learningLang]} language teacher for ${userLanguage}-speaking people. Your task is to explain topics very clearly and thoroughly. After your explanation, provide 3 exercises to reinforce the well-explained topic. Your explanations should be as clear as possible, with examples and details.
        
 Right now, your task is to teach me about the topic "${messageText}"
@@ -812,6 +933,14 @@ Respond in ${userLanguage} language`;
         databaseService
       );
 
+      // Save the response to the database for future use
+      await databaseService.saveTopicStudyResponse(
+        userId,
+        messageText,
+        response,
+        learningLang
+      );
+
       // Отправляем ответ, разбивая на части если необходимо
       await sendSplitMessage({
         ctx,
@@ -831,6 +960,26 @@ Respond in ${userLanguage} language`;
   } else {
     // User already has a topic - this is a follow-up message/answer to an exercise
     try {
+      // Check if we have a cached response for this exercise answer
+      const cacheKey = `${currentTopic}:answer:${messageText}`;
+      const cachedResponse = await databaseService.findTopicStudyResponse(
+        cacheKey,
+        learningLang
+      );
+
+      // If we have a cached response, use it
+      if (cachedResponse) {
+        console.log(`Using cached response for exercise answer`);
+
+        await sendSplitMessage({
+          ctx,
+          text: cachedResponse.response,
+          keyboard: createTopicStudyMenu(userLang),
+          parseMode: 'HTML'
+        });
+        return;
+      }
+
       // Send typing indicator
       await ctx.api.sendChatAction(userId, 'typing');
 
@@ -859,6 +1008,14 @@ IMPORTANT REQUIREMENTS:
         0.7,
         userId,
         databaseService
+      );
+
+      // Save the response to the database for future use
+      await databaseService.saveTopicStudyResponse(
+        userId,
+        cacheKey,
+        response,
+        learningLang
       );
 
       // Отправляем ответ, разбивая на части если необходимо

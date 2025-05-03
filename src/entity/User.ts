@@ -12,6 +12,7 @@ import { Invoice } from './Invoice';
 import { LlmRequest } from './LlmRequest';
 import { VocabularyEntry } from './VocabularyEntry';
 import { DiaryEntry } from './DiaryEntry';
+import { TopicStudyResponse } from './TopicStudyResponse';
 import { UserMode } from '../types';
 
 /**
@@ -79,6 +80,9 @@ export class User {
 
   @OneToMany(() => DiaryEntry, (diaryEntry) => diaryEntry.user)
   diaryEntries: DiaryEntry[];
+
+  @OneToMany(() => TopicStudyResponse, (topicStudy) => topicStudy.user)
+  topicStudyResponses: TopicStudyResponse[];
 
   /**
    * Check if user is in diary mode
