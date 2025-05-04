@@ -239,3 +239,64 @@ The project includes a Python script for generating Anki decks from word pairs:
 ## License
 
 MIT
+
+## Docker Setup
+
+TanulBot supports containerized deployment using Docker. Follow these steps to run the bot in Docker:
+
+1. Clone this repository and navigate to the project directory
+2. Create required directories:
+
+   ```bash
+   mkdir -p tessdata temp
+   ```
+
+3. Download Tesseract language data to the tessdata directory (example for Hungarian, German, and Russian):
+
+   ```bash
+   # On Windows
+   curl -L -o tessdata/hun.traineddata https://github.com/tesseract-ocr/tessdata/raw/main/hun.traineddata
+   curl -L -o tessdata/deu.traineddata https://github.com/tesseract-ocr/tessdata/raw/main/deu.traineddata
+   curl -L -o tessdata/rus.traineddata https://github.com/tesseract-ocr/tessdata/raw/main/rus.traineddata
+
+   # On Linux/macOS
+   wget -P tessdata/ https://github.com/tesseract-ocr/tessdata/raw/main/hun.traineddata
+   wget -P tessdata/ https://github.com/tesseract-ocr/tessdata/raw/main/deu.traineddata
+   wget -P tessdata/ https://github.com/tesseract-ocr/tessdata/raw/main/rus.traineddata
+   ```
+
+4. Edit the `docker.env` file with your Telegram Bot token, OpenAI API key, and other configuration:
+
+   ```
+   TELEGRAM_BOT_TOKEN=your_telegram_bot_token
+   OPENAI_API_KEY=your_openai_api_key
+   ```
+
+5. Start the containers with Docker Compose:
+
+   ```bash
+   docker-compose up -d
+   ```
+
+6. To see the logs:
+
+   ```bash
+   docker-compose logs -f
+   ```
+
+7. To stop the containers:
+   ```bash
+   docker-compose down
+   ```
+
+### Docker Volumes
+
+The Docker setup uses the following volumes:
+
+- `mysql-data`: Persistent storage for the MySQL database
+- `./tessdata:/app/tessdata`: Maps your local tessdata directory into the container
+- `./temp:/app/temp`: Maps a temporary directory for file processing
+
+### Docker Environment Variables
+
+All environment variables are stored in the `docker.env` file. For a complete list of available options, see the comments in that file.

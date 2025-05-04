@@ -117,6 +117,7 @@ const translations: Record<SupportedLanguage, Record<string, string>> = {
     'menu.dictation.start': '✍️ Start dictation',
     'menu.dictation.stop': '🛑 Stop dictation',
     'menu.achievements': '🎯 My achievements',
+    'menu.help': '❓ Help',
     'menu.back': '⬅️ Back to menu',
     'menu.diary.write': '📝 Write diary',
     'menu.diary.stop': '🛑 Finish writing',
@@ -129,6 +130,30 @@ const translations: Record<SupportedLanguage, Record<string, string>> = {
     'menu.diary.view': '📖 My Diary',
     'menu.diary.clear': '🗑️ Clear Diary',
     'menu.diary.start': '✏️ Start Writing',
+
+    // Help section
+    'help.title': '📚 TanulBot Help Guide',
+    'help.content': `Welcome to TanulBot! Here's how I can help you learn:
+    
+🗣 **Practice {language}** - Chat with me in {language} to practice conversation. I'll correct your mistakes and add new words to your vocabulary.
+
+📘 **Study a Topic** - Choose any topic and I'll prepare a detailed lesson with exercises to help you understand it better.
+
+✍️ **Start dictation** - Practice your listening skills through audio dictation exercises at different difficulty levels.
+
+📒 **Diary** - Write in your diary in {language} and I'll correct it, offering suggestions, mnemonics, and pronunciation tips.
+
+🎴 **Create Anki cards** - Generate Anki flashcards from your diary entries for effective vocabulary learning.
+
+📑 **PDF Processing** - Send me PDF documents in {language} and I'll extract vocabulary, create Anki decks, and help you learn new words from your reading materials.
+
+📝 **Alphabet Worksheets** - Access downloadable worksheets to practice writing.
+
+📚 **My vocabulary** - View all the words you've learned during our conversations.
+
+📜 **View chat history** - See your recent chats and track your learning progress.
+
+💎 **Subscription Status** - Manage your subscription and explore premium features for enhanced learning.`,
 
     // Topic study
     'topic_study.intro':
@@ -322,11 +347,12 @@ const translations: Record<SupportedLanguage, Record<string, string>> = {
   },
   ru: {
     // Menu items
-    'menu.practice': '🗣 Практиковать {language}',
+    'menu.practice': '🗣 Практика {language}',
     'menu.change_learning_language': '🔄 Изменить изучаемый язык',
     'menu.dictation.start': '✍️ Начать диктант',
     'menu.dictation.stop': '🛑 Остановить диктант',
     'menu.achievements': '🎯 Мои достижения',
+    'menu.help': '❓ Помощь',
     'menu.back': '⬅️ Вернуться в меню',
     'menu.diary.write': '📝 Вести дневник',
     'menu.diary.stop': '🛑 Закончить запись',
@@ -339,6 +365,30 @@ const translations: Record<SupportedLanguage, Record<string, string>> = {
     'menu.diary.view': '📖 Мой дневник',
     'menu.diary.clear': '🗑️ Очистить дневник',
     'menu.diary.start': '✏️ Начать запись',
+
+    // Help section
+    'help.title': '📚 Руководство по TanulBot',
+    'help.content': `Добро пожаловать в TanulBot! Вот как я могу помочь вам учиться:
+    
+🗣 **Практика {language}** - Общайтесь со мной на {language}, чтобы практиковать разговор. Я исправлю ваши ошибки и добавлю новые слова в ваш словарь.
+
+📘 **Изучение темы** - Выберите любую тему, и я подготовлю подробный урок с упражнениями, которые помогут вам лучше понять её.
+
+✍️ **Начать диктант** - Тренируйте навыки аудирования с помощью упражнений на диктовку разных уровней сложности.
+
+📒 **Дневник** - Пишите в своем дневнике на {language}, и я исправлю его, предлагая советы, мнемонические приемы и подсказки по произношению.
+
+🎴 **Создать карточки Anki** - Создавайте карточки Anki из записей вашего дневника для эффективного изучения словарного запаса.
+
+📑 **Обработка PDF** - Отправьте мне PDF документы на {language}, и я извлеку словарный запас, создам колоды Anki и помогу вам выучить новые слова из ваших материалов для чтения.
+
+📝 **Рабочие листы по алфавиту** - Доступ к скачиваемым рабочим листам для практики письма.
+
+📚 **Мой словарь** - Просмотр всех слов, которые вы выучили во время наших разговоров.
+
+📜 **Просмотр истории чата** - Просмотр недавних чатов и отслеживание прогресса в обучении.
+
+💎 **Статус подписки** - Управляйте своей подпиской и изучайте премиум-функции для улучшенного обучения.`,
 
     // Topic study
     'topic_study.intro':

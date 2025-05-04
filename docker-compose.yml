@@ -1,0 +1,43 @@
+version: '3.8'
+
+services:
+  tanulbot:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    restart: unless-stopped
+    depends_on:
+      - mysql
+    env_file:
+      - docker.env
+    volumes:
+      - ./tessdata:/app/tessdata
+      - ./temp:/app/temp
+    networks:
+      - tanulbot-network
+    command: >
+      sh -c "pnpm migrate && pnpm start"
+
+  mysql:
+    image: mysql
+    restart: unless-stopped
+    environment:
+      - MYSQL_DATABASE=tanulbot
+      - MYSQL_USER=tanulbot_user
+      - MYSQL_PASSWORD=your_secure_password
+      - MYSQL_ROOT_PASSWORD=root_password
+    volumes:
+      - mysql-data:/var/lib/mysql
+      - ./init-db.sql:/docker-entrypoint-initdb.d/init-db.sql
+    networks:
+      - tanulbot-network
+    ports:
+      - '3306:3306'
+    command: --character-set-server=utf8mb4 --collation-server=utf8mb4_unicode_ci
+
+networks:
+  tanulbot-network:
+    driver: bridge
+
+volumes:
+  mysql-data:

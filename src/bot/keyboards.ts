@@ -18,6 +18,7 @@ export const KEYBOARD_IDS = {
   START_DICTATION: 'menu.dictation.start',
   STOP_DICTATION: 'menu.dictation.stop',
   MY_ACHIEVEMENTS: 'menu.achievements',
+  HELP: 'menu.help',
   FORMAT_WORDS: 'format.words',
   FORMAT_STORY: 'format.story',
   DIFFICULTY_EASY: 'difficulty.easy',
@@ -106,6 +107,7 @@ export function createMainMenu(
       .text(actions.VIEW_VOCABULARY)
       .row()
       .text(actions.MY_ACHIEVEMENTS)
+      .text(actions.HELP)
       .row()
 
       // Chat management

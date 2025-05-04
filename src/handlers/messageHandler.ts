@@ -484,6 +484,23 @@ export async function handleTextMessage(ctx: Context): Promise<void> {
     return;
   }
 
+  // Handle help command
+  if (messageText === actions.HELP || messageText === '/help') {
+    // Get the language name in the user's preferred language
+    const languageName = t(`language.${learningLang}`, userLang);
+
+    // Format the help content with the current learning language
+    const helpTitle = t('help.title', userLang);
+    const helpContent = t('help.content', userLang, { language: languageName });
+
+    // Send the help message with formatted content and parse_mode for HTML
+    await ctx.reply(`${helpTitle}\n\n${helpContent}`, {
+      parse_mode: 'Markdown',
+      reply_markup: createMainMenu(userLang, learningLang)
+    });
+    return;
+  }
+
   // Check if user is in topic study mode
   const userMode = await store.getUserMode(userId);
   if (userMode === UserMode.TOPIC_STUDY) {
@@ -640,9 +657,14 @@ export async function handleTextMessage(ctx: Context): Promise<void> {
     const vocabulary = await store.getUserVocabulary(userId);
 
     if (vocabulary.length === 0) {
-      await ctx.reply(t('vocabulary.empty', userLang), {
-        reply_markup: createMainMenu(userLang, learningLang)
-      });
+      await ctx.reply(
+        t('vocabulary.empty', userLang, {
+          language: t(`language.${learningLang}`, userLang)
+        }),
+        {
+          reply_markup: createMainMenu(userLang, learningLang)
+        }
+      );
       return;
     }
 
