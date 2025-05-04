@@ -23,7 +23,6 @@ import { DictationDifficulty, DictationFormat, UserMode } from '../types';
 import {
   processDiaryEntry,
   createAnkiDeck,
-  generateLearningSuggestions,
   cleanupAnkiDeckFile
 } from '../services/diary';
 import {
@@ -52,6 +51,7 @@ import {
 } from '../constants/messageHandler';
 import { DatabaseService } from '../services/DatabaseService';
 import { sendSplitMessage } from '../utils/message';
+import * as Sentry from '@sentry/node';
 
 // Create a database service instance for logging
 const databaseService = new DatabaseService();
@@ -949,6 +949,7 @@ Respond in ${userLanguage} language`;
         parseMode: 'HTML'
       });
     } catch (error) {
+      Sentry.captureException(error);
       console.error('Error generating topic study lesson:', error);
 
       // Inform the user about the error
@@ -1026,6 +1027,7 @@ IMPORTANT REQUIREMENTS:
         parseMode: 'HTML'
       });
     } catch (error) {
+      Sentry.captureException(error);
       console.error('Error evaluating topic study response:', error);
 
       // Inform the user about the error

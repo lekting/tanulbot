@@ -22,6 +22,8 @@ import {
 } from '../constants/worksheetHandler';
 import { getUserLang } from '../utils/handlerUtils';
 
+import * as Sentry from '@sentry/node';
+
 // Import ALPHABETS to check if language supports uppercase
 import { ALPHABETS } from '../services/worksheet';
 
@@ -262,6 +264,7 @@ export async function handleWorksheetCallback(ctx: Context): Promise<void> {
       store.clearUserTemporaryData(userId, 'worksheetFontStyle');
     } catch (error) {
       console.error('Error generating worksheet:', error);
+      Sentry.captureException(error);
       await ctx.reply(t('worksheet.error', userLang));
     }
     return;
@@ -316,6 +319,7 @@ export async function handleWorksheetCallback(ctx: Context): Promise<void> {
       );
     } catch (error) {
       console.error('Error generating workbook:', error);
+      Sentry.captureException(error);
       await ctx.reply(t('worksheet.error', userLang));
     }
     return;

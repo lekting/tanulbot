@@ -4,6 +4,7 @@ import dotenv from 'dotenv';
 import path from 'path';
 
 dotenv.config();
+import * as Sentry from '@sentry/node';
 
 // Database configuration from environment variables
 const {
@@ -35,6 +36,7 @@ export async function initDatabase(): Promise<void> {
     await AppDataSource.initialize();
     console.log('Database connection established successfully.');
   } catch (error) {
+    Sentry.captureException(error);
     console.error('Unable to connect to the database:', error);
     throw error;
   }

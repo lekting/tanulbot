@@ -13,6 +13,7 @@ import { normalizeText } from '../../utils/text';
 import { execFile as execFileCallback } from 'child_process';
 import { promisify } from 'util';
 import { DatabaseService } from '../DatabaseService';
+import * as Sentry from '@sentry/node';
 
 const execFile = promisify(execFileCallback);
 
@@ -98,6 +99,7 @@ Format as valid JSON.`;
       mnemonics: result.mnemonics
     };
   } catch (error) {
+    Sentry.captureException(error);
     console.error('Error processing diary entry:', error);
     throw new Error('Failed to process diary entry');
   }
@@ -171,6 +173,7 @@ export async function createAnkiDeck(
         filePath: outputPath
       };
     } catch (pythonError) {
+      Sentry.captureException(pythonError);
       console.error('Error running Python script:', pythonError);
       throw new Error(
         `Failed to generate Anki deck: ${
@@ -180,6 +183,7 @@ export async function createAnkiDeck(
     }
   } catch (error) {
     console.error('Error creating Anki deck:', error);
+    Sentry.captureException(error);
     throw error;
   }
 }
@@ -192,6 +196,7 @@ export async function cleanupAnkiDeckFile(filePath: string): Promise<void> {
     await fs.unlink(filePath);
     console.log(`Anki deck file removed: ${filePath}`);
   } catch (error) {
+    Sentry.captureException(error);
     console.error(`Error removing Anki deck file ${filePath}:`, error);
   }
 }
@@ -244,6 +249,7 @@ SEND ONLY THE TIPS, NO OTHER TEXT.
       .filter((line) => line.trim().length > 0)
       .map((line) => line.replace(/^\d+\.\s*/, '').trim());
   } catch (error) {
+    Sentry.captureException(error);
     console.error('Error generating learning suggestions:', error);
     return [
       `Error generating suggestions. Try reviewing the words in small batches of 5-10 at a time.`

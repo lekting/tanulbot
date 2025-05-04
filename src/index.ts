@@ -17,6 +17,9 @@ import {
 } from './workers/index';
 import { registerSubscriptionHandlers } from './services/subscription';
 import { initDatabase } from './config/database';
+import './instrument';
+
+import * as Sentry from '@sentry/node';
 
 // Initialize application
 async function startApp() {
@@ -83,6 +86,7 @@ async function startApp() {
     });
     await bot.start();
   } catch (error) {
+    Sentry.captureException(error);
     console.error('Failed to start application:', error);
     process.exit(1);
   }
@@ -90,6 +94,7 @@ async function startApp() {
 
 // Start the application
 startApp().catch((error) => {
+  Sentry.captureException(error);
   console.error('Unhandled application error:', error);
   process.exit(1);
 });

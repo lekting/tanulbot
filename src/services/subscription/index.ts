@@ -1,8 +1,9 @@
-import { Bot, Context, InputFile } from 'grammy';
+import { Bot, Context } from 'grammy';
 import { store } from '../../store';
 import { SubscriptionPlan } from '../../types';
 import { t, getSubscriptionPlans } from '../i18n';
 import { getUserLang } from '../../utils/handlerUtils';
+import * as Sentry from '@sentry/node';
 
 /**
  * Create an invoice for subscription purchase
@@ -64,6 +65,7 @@ export async function handlePreCheckout(ctx: Context): Promise<void> {
     try {
       await ctx.answerPreCheckoutQuery(true);
     } catch (error) {
+      Sentry.captureException(error);
       console.error('Error answering pre-checkout query:', error);
     }
   }
@@ -117,6 +119,7 @@ export async function processSuccessfulPayment(ctx: Context): Promise<void> {
       })
     );
   } catch (error) {
+    Sentry.captureException(error);
     console.error('Error processing successful payment:', error);
     await ctx.reply(t('subscription.error', userLang));
   }
@@ -149,6 +152,7 @@ export async function cancelSubscription(ctx: Context): Promise<void> {
     // Confirm cancellation
     await ctx.reply(t('subscription.cancelled', userLang));
   } catch (error) {
+    Sentry.captureException(error);
     console.error('Error cancelling subscription:', error);
     await ctx.reply(t('subscription.cancel_error', userLang));
   }

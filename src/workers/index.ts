@@ -5,6 +5,7 @@ import { TMP_DIR } from '../config';
 import fs from 'fs/promises';
 import path from 'path';
 import { cleanupOldHashRecords } from '../utils/fileHash';
+import * as Sentry from '@sentry/node';
 
 // Re-export the active user worker
 export { startActiveUserWorker } from './activeUserWorker';
@@ -23,6 +24,7 @@ export function startFileCleanupWorker(): NodeJS.Timeout {
     try {
       await cleanupOldFiles();
     } catch (error) {
+      Sentry.captureException(error);
       console.error('Error in file cleanup worker:', error);
     }
   }, 4 * 60 * 60 * 1000); // Run every 4 hours
@@ -39,6 +41,7 @@ export function startHashRecordCleanupWorker(): NodeJS.Timeout {
     try {
       await cleanupAllUsersHashRecords();
     } catch (error) {
+      Sentry.captureException(error);
       console.error('Error in hash record cleanup worker:', error);
     }
   }, 24 * 60 * 60 * 1000); // Run every 24 hours
@@ -97,6 +100,7 @@ async function cleanupAllUsersHashRecords(): Promise<void> {
       `Hash record cleanup completed. Total records deleted: ${totalCleanedRecords}`
     );
   } catch (error) {
+    Sentry.captureException(error);
     console.error('Error cleaning up old hash records:', error);
   }
 }
@@ -149,6 +153,7 @@ async function cleanupOldFiles(): Promise<void> {
                   console.log(`Deleted old file: ${filePath}`);
                 }
               } catch (fileError) {
+                Sentry.captureException(fileError);
                 console.error(`Error processing file ${filePath}:`, fileError);
               }
             } else if (file.name === 'audio') {
@@ -171,6 +176,7 @@ async function cleanupOldFiles(): Promise<void> {
                       console.log(`Deleted old audio file: ${audioFilePath}`);
                     }
                   } catch (audioFileError) {
+                    Sentry.captureException(audioFileError);
                     console.error(
                       `Error processing audio file ${audioFilePath}:`,
                       audioFileError
@@ -178,6 +184,7 @@ async function cleanupOldFiles(): Promise<void> {
                   }
                 }
               } catch (audioDirError) {
+                Sentry.captureException(audioDirError);
                 console.error(
                   `Error processing audio directory ${audioDir}:`,
                   audioDirError
@@ -186,6 +193,7 @@ async function cleanupOldFiles(): Promise<void> {
             }
           }
         } catch (dirError) {
+          Sentry.captureException(dirError);
           console.error(
             `Error processing user directory ${userDir}:`,
             dirError
@@ -196,6 +204,7 @@ async function cleanupOldFiles(): Promise<void> {
 
     console.log('Cleanup of old temporary files completed');
   } catch (error) {
+    Sentry.captureException(error);
     console.error('Error cleaning up old temporary files:', error);
   }
 }

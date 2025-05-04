@@ -11,6 +11,7 @@ import {
   HASH_LENGTH
 } from '../constants/documentHandler';
 import { TMP_DIR } from '../config';
+import * as Sentry from '@sentry/node';
 
 /**
  * Generate a hash for a file
@@ -24,6 +25,7 @@ export async function generateFileHash(filePath: string): Promise<string> {
     hashSum.update(fileBuffer);
     return hashSum.digest('hex');
   } catch (error) {
+    Sentry.captureException(error);
     console.error(`Error generating hash for ${filePath}:`, error);
     throw error;
   }
@@ -240,6 +242,7 @@ export async function cleanupOldHashRecords(
 
     return deletedCount;
   } catch (error) {
+    Sentry.captureException(error);
     console.error(`Error cleaning up hash records for user ${userId}:`, error);
     return 0;
   }

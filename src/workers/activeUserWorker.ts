@@ -10,6 +10,7 @@ import {
 import { createMainMenu } from '../bot/keyboards';
 import { store } from '../store';
 import { getUserLang } from '../utils/handlerUtils';
+import * as Sentry from '@sentry/node';
 
 /**
  * Start the active user communication worker
@@ -40,7 +41,8 @@ export function startActiveUserWorker(bot: Bot): NodeJS.Timeout {
           // Update the user's last active timestamp
           store.setUserActive(userId);
         } catch (err) {
-          console.error('Ошибка при пинге пользователя:', err);
+          Sentry.captureException(err);
+          console.error('Error while pinging user:', err);
           // Remove user if we can't communicate with them
           store.removeActiveUser(userId);
         }

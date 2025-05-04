@@ -21,9 +21,10 @@ import {
   SupportedLanguage,
   SupportedLearningLanguage,
   LEARNING_LANGUAGE_TO_NAME,
-  t,
-  LANGUAGE_SPECIFIC_CHARS
+  t
 } from '../i18n';
+
+import * as Sentry from '@sentry/node';
 
 // Helper function to truncate text based on token count (simple estimate)
 function truncateText(text: string, maxTokens: number): string {
@@ -196,6 +197,7 @@ ${partialResponse}
       JSON.parse(repairedJson); // Just to validate
       return repairedJson;
     } catch (error) {
+      Sentry.captureException(error);
       console.error('Failed to combine and repair JSON response:', error);
       // If combining fails, at least return both parts
       return partialResponse + continuationText;
@@ -252,6 +254,7 @@ export function isIncompleteJSON(text: string): boolean {
     JSON.parse(text);
     return false; // Successfully parsed, not incomplete
   } catch (e) {
+    Sentry.captureException(e);
     // But only return true if it actually has JSON-like structures
     return hasJsonStart;
   }
@@ -361,6 +364,7 @@ Guidelines:
 
     return responseText;
   } catch (error) {
+    Sentry.captureException(error);
     console.error('Error in conversation API call:', error);
     // Provide fallback response if API call fails
     return t('practice.fallback', language);
@@ -525,6 +529,7 @@ Example response format:
       };
     }
   } catch (error) {
+    Sentry.captureException(error);
     console.error('Error in conversation API call:', error);
 
     // Provide fallback response if API call fails
@@ -595,6 +600,7 @@ function sanitizeJson(input: string): string {
       JSON.parse(repaired);
       return repaired;
     } catch (repairError) {
+      Sentry.captureException(repairError);
       // jsonrepair failed, log the error
       console.warn('jsonrepair failed:', repairError);
 
@@ -618,6 +624,7 @@ function sanitizeJson(input: string): string {
         JSON.parse(cleaned);
         return cleaned;
       } catch (customRepairError) {
+        Sentry.captureException(customRepairError);
         // All repair attempts failed
         console.warn(
           'Could not repair JSON:',

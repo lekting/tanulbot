@@ -9,6 +9,7 @@ import axios from 'axios';
 import { WordPair } from '../types';
 import { ensureUserDir, TMP_DIR } from '../config';
 import { t, SupportedLanguage, DEFAULT_LANGUAGE } from '../services/i18n';
+import * as Sentry from '@sentry/node';
 
 const OCR_TIME_PER_PAGE = 20; // ~20 seconds per page with OCR
 
@@ -231,6 +232,7 @@ export async function extractTextFromPdf(
 
     return { text: extractedText, pageCount, ocrUsed: true };
   } catch (error) {
+    Sentry.captureException(error);
     console.error('OCR processing failed:', error);
 
     if (progressCallback) {
@@ -375,6 +377,7 @@ export async function createAnkiDeck(
     return ankiPackage;
   } catch (error) {
     console.error('Error creating Anki package:', error);
+    Sentry.captureException(error);
     throw error;
   }
 }

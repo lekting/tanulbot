@@ -33,12 +33,13 @@ import {
 import { DatabaseService } from '../services';
 import {
   generateFileHash,
-  getHashedFilename,
   saveHashRecord,
   getHashRecord,
   saveExtractedTextForHash,
   getExtractedTextForHash
 } from '../utils/fileHash';
+
+import * as Sentry from '@sentry/node';
 
 interface WordPair {
   front: string;
@@ -150,6 +151,7 @@ export async function handleDocumentUpload(ctx: Context): Promise<void> {
           text
         );
       } catch (error) {
+        Sentry.captureException(error);
         console.error('Error updating progress message:', error);
       }
     }, DEBOUNCE_INTERVAL_MS);
@@ -214,6 +216,7 @@ export async function handleDocumentUpload(ctx: Context): Promise<void> {
             updateMessage(statusMessage);
           }
         } catch (error) {
+          Sentry.captureException(error);
           console.error('Error preparing progress update:', error);
         }
       },
@@ -276,6 +279,7 @@ export async function handleDocumentUpload(ctx: Context): Promise<void> {
       });
     }
   } catch (error) {
+    Sentry.captureException(error);
     console.error('Error processing file:', error);
 
     if (error instanceof Error) {
@@ -403,6 +407,7 @@ async function processExtractedText(
 
     await fs.unlink(deckPath);
   } catch (error) {
+    Sentry.captureException(error);
     console.error('Error processing extracted text:', error);
     await ctx.api.editMessageText(
       ctx.chat?.id || userId,
@@ -460,6 +465,7 @@ export async function handleDocumentCallback(ctx: Context): Promise<void> {
       pendingTasks.delete(userId);
     }
   } catch (error) {
+    Sentry.captureException(error);
     console.error('Error handling callback:', error);
     await ctx.answerCallbackQuery(t('document.callback_error', userLang));
   }

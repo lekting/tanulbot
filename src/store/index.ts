@@ -6,7 +6,6 @@ import {
   WordPair,
   DiaryEntry,
   ProcessedDiaryEntry,
-  UserState,
   ChatMessage,
   VocabularyEntry,
   DictationFormat,
@@ -23,6 +22,8 @@ import {
 import { DatabaseService } from '../services/DatabaseService';
 import { User } from 'grammy/types';
 import { UserMode } from '../types';
+
+import * as Sentry from '@sentry/node';
 
 /**
  * State store with MySQL database backend
@@ -116,6 +117,7 @@ export class StateStore {
 
       this.lastCacheUpdate = Date.now();
     } catch (error) {
+      Sentry.captureException(error);
       console.error('Failed to refresh active users cache:', error);
     }
   }
@@ -334,6 +336,7 @@ export class StateStore {
 
       return true;
     } catch (error) {
+      Sentry.captureException(error);
       console.error(`Error clearing diary entries for user ${userId}:`, error);
       return false;
     }
